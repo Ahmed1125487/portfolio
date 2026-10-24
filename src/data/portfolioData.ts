@@ -12,7 +12,7 @@ export const personalInfo: PersonalInfo = {
   email: 'ahmed.atef.dev@example.com',
   github: 'https://github.com/Ahmed1125487',
   linkedin: 'https://linkedin.com/in/ahmed-atef-a8461b402',
-  cvUrl: '/cv.pdf',
+  cvUrl: `${import.meta.env.BASE_URL}cv.pdf`,
 };
 
 export const socialLinks: SocialLink[] = [
