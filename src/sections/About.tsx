@@ -33,7 +33,7 @@ function Word({ word }: WordProps) {
 }
 
 export default function About() {
-  const paragraph = `I'm Ahmed Atef, a frontend and full-stack developer based in Egypt with a passion for crafting exceptional digital experiences. I specialize in React, TypeScript, and modern web technologies, building applications that combine clean architecture with polished interfaces.`;
+  const paragraph = `I'm Ahmed Atef, a full-stack developer based in Egypt with a passion for crafting exceptional digital experiences. I build complete web applications, from polished React and TypeScript interfaces to backend services with Java and Node.js, combining clean architecture with reliable, well-designed systems.`;
 
   const stats = [
     { label: 'Years Experience', value: 3 },
