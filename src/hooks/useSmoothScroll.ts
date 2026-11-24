@@ -1,6 +1,14 @@
 import { useEffect } from 'react';
 import Lenis from '@studio-freight/lenis';
 
+// The live Lenis instance, exposed so overlays (e.g. the certificate modal) can
+// pause the page's smooth scroll without tearing down the hook.
+let lenisInstance: Lenis | null = null;
+
+export function getLenis() {
+  return lenisInstance;
+}
+
 export function useSmoothScroll() {
   useEffect(() => {
     const lenis = new Lenis({
@@ -13,6 +21,8 @@ export function useSmoothScroll() {
       touchMultiplier: 1.5,
     });
 
+    lenisInstance = lenis;
+
     function raf(time: number) {
       lenis.raf(time);
       requestAnimationFrame(raf);
@@ -22,6 +32,7 @@ export function useSmoothScroll() {
 
     return () => {
       lenis.destroy();
+      if (lenisInstance === lenis) lenisInstance = null;
     };
   }, []);
 }

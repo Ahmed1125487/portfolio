@@ -9,10 +9,11 @@ interface NavbarProps {
 
 const navLinks = [
   { label: '(01) ABOUT', href: '#about' },
-  { label: '(02) PROJECTS', href: '#projects' },
-  { label: '(03) SKILLS', href: '#skills' },
-  { label: '(04) JOURNEY', href: '#journey' },
-  { label: '(05) CONTACT', href: '#contact' },
+  { label: '(02) CERTIFICATES', href: '#certificates' },
+  { label: '(03) PROJECTS', href: '#projects' },
+  { label: '(04) SKILLS', href: '#skills' },
+  { label: '(05) JOURNEY', href: '#journey' },
+  { label: '(06) CONTACT', href: '#contact' },
 ];
 
 export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
@@ -109,7 +110,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
           </a>
 
           {/* Desktop Nav */}
-          <ul className="hidden lg:flex items-center gap-8">
+          <ul className="hidden lg:flex items-center gap-5 xl:gap-8">
             {navLinks.map((link) => (
               <li key={link.href}>
                 <a

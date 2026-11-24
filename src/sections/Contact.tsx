@@ -19,7 +19,7 @@ export default function Contact() {
   return (
     <section id="contact" className="py-32 px-6 lg:px-12 min-h-screen flex flex-col justify-center relative" aria-label="Contact section">
       {/* Section Label */}
-      <p className="font-mono text-xs tracking-widest text-accent mb-4">(05) — CONTACT</p>
+      <p className="font-mono text-xs tracking-widest text-accent mb-4">(06) — CONTACT</p>
 
       <div className="max-w-[1440px] mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">

@@ -1,6 +1,4 @@
-﻿import { useRef, useEffect, useCallback } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAws } from '@fortawesome/free-brands-svg-icons';
 import {
@@ -60,6 +58,126 @@ const iconEntries: IconEntry[] = [
   { name: 'CSS3', Comp: SiCss },
 ];
 
+type SkillCategory = keyof typeof skills;
+
+const PANEL_LABELS: Record<SkillCategory, string> = {
+  frontend: 'Frontend',
+  backend: 'Backend',
+  tools: 'Tools',
+};
+
+const pad2 = (value: number) => String(value).padStart(2, '0');
+
+function SkillPanel({
+  category,
+  index,
+  items,
+}: {
+  category: SkillCategory;
+  index: number;
+  items: string[];
+}) {
+  const panelRef = useRef<HTMLElement>(null);
+  const [isIn, setIsIn] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setIsIn(true);
+        observer.unobserve(panel);
+        observer.disconnect();
+      },
+      { threshold: 0.2 }
+    );
+
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, []);
+
+  const titleId = 'skill-panel-' + category;
+
+  return (
+    <article
+      ref={panelRef}
+      aria-labelledby={titleId}
+      className={'skill-panel relative h-full overflow-hidden border border-border bg-surface/40 p-5 md:p-6' + (isIn ? ' is-in' : '')}
+    >
+      <div
+        aria-hidden='true'
+        className='pointer-events-none absolute inset-0 z-0 opacity-[0.04]'
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      <span aria-hidden='true' className='skill-corner skill-corner-tl pointer-events-none absolute left-3 top-3 z-20 h-3 w-3 border-l border-t border-accent/70' />
+      <span aria-hidden='true' className='skill-corner skill-corner-tr pointer-events-none absolute right-3 top-3 z-20 h-3 w-3 border-r border-t border-accent/70' />
+      <span aria-hidden='true' className='skill-corner skill-corner-bl pointer-events-none absolute bottom-3 left-3 z-20 h-3 w-3 border-b border-l border-accent/70' />
+      <span aria-hidden='true' className='skill-corner skill-corner-br pointer-events-none absolute bottom-3 right-3 z-20 h-3 w-3 border-b border-r border-accent/70' />
+
+      <div className='relative z-10'>
+        <div className='flex items-start justify-between gap-4'>
+          <span aria-hidden='true' className='font-mono text-xs tracking-widest text-accent'>
+            {pad2(index + 1)}
+          </span>
+          <span aria-label={items.length + ' technologies'} className='font-mono text-[10px] tracking-[0.18em] text-text-muted'>
+            {pad2(items.length)}
+          </span>
+        </div>
+
+        <h3 id={titleId} className='mt-2 font-display text-3xl italic leading-none text-text'>
+          {PANEL_LABELS[category]}
+        </h3>
+
+        <div aria-hidden='true' className='skill-divider relative mt-5 h-px w-full bg-border'>
+          <span className='skill-divider-fill absolute left-0 top-0 h-px bg-accent' />
+        </div>
+
+        <ul className='skill-list mt-1'>
+          {items.map((item, rowIndex) => (
+            <li
+              key={item}
+              tabIndex={0}
+              className='skill-row relative border-b border-border/60 last:border-b-0'
+            >
+              <div
+                className='skill-row-motion relative'
+                style={{ '--i': rowIndex } as React.CSSProperties}
+              >
+                <div className='grid grid-cols-[2.5rem_1fr_auto] items-center gap-2 py-3'>
+                  <span className='skill-row-number font-mono text-[11px] tracking-widest text-text-muted/60'>
+                    {pad2(rowIndex + 1)}
+                  </span>
+                  <span className='skill-row-name min-w-0 font-mono text-sm text-text-muted'>
+                    {item}
+                  </span>
+                  <span aria-hidden='true' className='skill-row-arrow font-mono text-sm text-accent'>
+                    →
+                  </span>
+                </div>
+                <span
+                  aria-hidden='true'
+                  className='skill-row-underline pointer-events-none absolute bottom-0 left-0 h-px w-full bg-accent'
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </article>
+  );
+}
+
 // Smoothstep helper
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
@@ -67,7 +185,6 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 }
 
 export default function Skills() {
-  const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
   const mobRef = useRef(false);
@@ -135,33 +252,6 @@ export default function Skills() {
     return () => window.removeEventListener('resize', collectItems);
   }, [checkReducedMotion]);
 
-  // Setup / teardown
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const ctx = gsap.context(() => {
-      document.querySelectorAll('.skill-column').forEach((col) => {
-        const columnEl = col as HTMLElement;
-        const colItems = columnEl.querySelectorAll('.skill-item');
-        ScrollTrigger.create({
-          trigger: columnEl,
-          start: 'top bottom-=100',
-          end: 'bottom top+=100',
-          scrub: true,
-          onUpdate: (self) => {
-            colItems.forEach((item, i) => {
-              const el = item as HTMLElement;
-              el.style.opacity = String(0.4 + self.progress * 0.6 + i * 0.05);
-              el.style.transform = `translateY(${(1 - self.progress) * 10}px)`;
-            });
-          },
-        });
-      });
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
-
   useEffect(() => {
     const rm = checkReducedMotion();
     if (rm) {
@@ -205,27 +295,122 @@ export default function Skills() {
 
   return (
     <section id="skills" className="py-32 px-6 lg:px-12 relative" aria-label="Skills section">
-      <p className="font-mono text-xs tracking-widest text-accent mb-4">(03) — SKILLS</p>
+      <p className="font-mono text-xs tracking-widest text-accent mb-4">(04) — SKILLS</p>
 
-      <div ref={containerRef} className="max-w-[1440px] mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-20">
-          {Object.entries(skills).map(([category, items]) => (
-            <div key={category} className="skill-column border-l border-border pl-6">
-              <h3 className="font-display text-2xl italic text-text mb-6">
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </h3>
-              <ul className="space-y-3">
-                {items.map((item, index) => (
-                  <li
-                    key={index}
-                    className="skill-item font-mono text-sm text-text-muted hover:text-accent transition-colors duration-200 cursor-default"
-                  >
-                    <span className="text-accent mr-2">{'>'}</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
+      <div className="max-w-[1440px] mx-auto mb-20">
+        <style>{`
+          .skill-panel {
+            opacity: 0;
+            transform: translateY(16px);
+            transition:
+              opacity 0.5s cubic-bezier(0.2, 0.7, 0.2, 1),
+              transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+          }
+          .skill-panel.is-in {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          .skill-row-motion {
+            opacity: 0;
+            transform: translateX(-8px);
+            transition:
+              opacity 0.5s cubic-bezier(0.2, 0.7, 0.2, 1),
+              transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+            transition-delay: calc(var(--i) * 40ms + 120ms);
+          }
+          .skill-panel.is-in .skill-row-motion {
+            opacity: 1;
+            transform: translateX(0);
+          }
+          .skill-divider-fill {
+            width: 24px;
+            transform: scaleX(0);
+            transform-origin: left;
+            transition:
+              transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) 100ms,
+              width 0.35s ease;
+          }
+          .skill-panel.is-in .skill-divider-fill {
+            transform: scaleX(1);
+          }
+          .skill-panel:hover .skill-divider-fill {
+            width: 40%;
+          }
+          .skill-corner {
+            transition: transform 0.35s ease;
+          }
+          .skill-panel:hover .skill-corner-tl { transform: translate(-4px, -4px); }
+          .skill-panel:hover .skill-corner-tr { transform: translate(4px, -4px); }
+          .skill-panel:hover .skill-corner-bl { transform: translate(-4px, 4px); }
+          .skill-panel:hover .skill-corner-br { transform: translate(4px, 4px); }
+          .skill-row {
+            transition: opacity 0.2s ease;
+          }
+          .skill-row-name,
+          .skill-row-number,
+          .skill-row-arrow {
+            transition: color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;
+          }
+          .skill-row-arrow {
+            opacity: 0;
+            transform: translateX(-4px);
+          }
+          .skill-row-underline {
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+          }
+          .skill-row:hover .skill-row-name,
+          .skill-row:focus-visible .skill-row-name {
+            color: var(--color-text);
+            transform: translateX(6px);
+          }
+          .skill-row:hover .skill-row-number,
+          .skill-row:focus-visible .skill-row-number {
+            color: var(--color-accent);
+          }
+          .skill-row:hover .skill-row-arrow,
+          .skill-row:focus-visible .skill-row-arrow {
+            opacity: 1;
+            transform: translateX(0);
+          }
+          .skill-row:hover .skill-row-underline,
+          .skill-row:focus-visible .skill-row-underline {
+            transform: scaleX(1);
+          }
+          @media (hover: hover) {
+            .skill-list:has(.skill-row:hover) .skill-row:not(:hover),
+            .skill-list:has(.skill-row:focus-visible) .skill-row:not(:focus-visible) {
+              opacity: 0.45;
+            }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .skill-panel,
+            .skill-panel .skill-row-motion,
+            .skill-panel .skill-divider-fill {
+              opacity: 1 !important;
+              transform: none !important;
+              transition: none !important;
+            }
+            .skill-corner,
+            .skill-row,
+            .skill-row-name,
+            .skill-row-number,
+            .skill-row-arrow,
+            .skill-row-underline {
+              transition: none !important;
+            }
+          }
+        `}</style>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {(Object.keys(skills) as SkillCategory[]).map((category, index) => (
+            <SkillPanel
+              key={category}
+              category={category}
+              index={index}
+              items={skills[category]}
+            />
           ))}
         </div>
       </div>

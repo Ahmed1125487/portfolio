@@ -1,6 +1,8 @@
-import { useRef, useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 interface Project {
   index: string;
@@ -10,6 +12,8 @@ interface Project {
   gradient: string;
   github?: string;
   progress: number;
+  image?: string;
+  liveUrl?: string;
 }
 
 const projects: Project[] = [
@@ -51,17 +55,107 @@ const projects: Project[] = [
   },
 ];
 
+const PLATE_BARS = [28, 52, 40, 68, 44, 80, 58, 36];
+
+function pad(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function projectTimeline(card: HTMLElement) {
+  const select = gsap.utils.selector(card);
+  const progress = Number(card.dataset.progress ?? 0);
+  const valueEl = card.querySelector<HTMLElement>('.proj-progress-value');
+  const fill = card.querySelector<HTMLElement>('.proj-progress-fill');
+  const scan = card.querySelector<HTMLElement>('.proj-scan');
+
+  gsap.set(select('.proj-index, .proj-pill, .proj-desc, .proj-meta'), { y: 12, opacity: 0 });
+  gsap.set(select('.proj-title-inner'), { yPercent: 110 });
+  gsap.set(select('.proj-chip'), { y: 8, opacity: 0 });
+  gsap.set(select('.proj-preview'), { y: 10, opacity: 0 });
+  if (fill) gsap.set(fill, { scaleX: 0 });
+  if (valueEl) valueEl.textContent = '0%';
+
+  const counter = { value: 0 };
+  const timeline = gsap.timeline({ paused: true, defaults: { ease: 'power3.out' } });
+
+  timeline
+    .to(select('.proj-index, .proj-pill'), { y: 0, opacity: 1, duration: 0.55, stagger: 0.06 }, 0)
+    .to(select('.proj-title-inner'), { yPercent: 0, duration: 0.85, ease: 'power4.out' }, 0.08)
+    .to(select('.proj-desc, .proj-meta'), { y: 0, opacity: 1, duration: 0.65, stagger: 0.05 }, 0.2)
+    .to(select('.proj-chip'), { y: 0, opacity: 1, duration: 0.45, stagger: 0.04 }, 0.3)
+    .to(select('.proj-preview'), { y: 0, opacity: 1, duration: 0.7 }, 0.18);
+
+  if (fill) {
+    timeline.to(fill, { scaleX: progress / 100, duration: 1.05, ease: 'power2.inOut' }, 0.42);
+  }
+
+  if (valueEl) {
+    timeline.to(counter, {
+      value: progress,
+      duration: 1.05,
+      ease: 'power2.inOut',
+      onUpdate: () => {
+        valueEl.textContent = Math.round(counter.value) + '%';
+      },
+    }, 0.42);
+  }
+
+  if (scan) {
+    timeline
+      .fromTo(scan, { y: 0, opacity: 0 }, {
+        y: () => card.offsetHeight,
+        opacity: 0.9,
+        duration: 1,
+        ease: 'power2.inOut',
+      }, 0.12)
+      .to(scan, { opacity: 0, duration: 0.2 }, '>-0.15');
+  }
+
+  return timeline;
+}
+
 export default function Projects() {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const pinTarget = containerRef.current;
-    if (!pinTarget || !trackRef.current) return;
+    const track = trackRef.current;
+    if (!pinTarget || !track) return;
 
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const media = gsap.matchMedia();
+
     media.add('(min-width: 768px)', () => {
+      let removeFocusReveal = () => {};
+
       const ctx = gsap.context(() => {
+        const cards = gsap.utils.toArray<HTMLElement>('.project-card', track);
+        const timelines = new Map<HTMLElement, gsap.core.Timeline>();
+
+        cards.forEach((card) => {
+          delete card.dataset.revealed;
+          if (reducedMotion) {
+            card.dataset.revealed = 'true';
+          } else {
+            timelines.set(card, projectTimeline(card));
+          }
+        });
+
+        const reveal = (card: HTMLElement) => {
+          if (card.dataset.revealed === 'true') return;
+          card.dataset.revealed = 'true';
+          timelines.get(card)?.play();
+        };
+
+        const onFocusIn = (event: FocusEvent) => {
+          if (!(event.target instanceof HTMLElement)) return;
+          const card = event.target.closest<HTMLElement>('.project-card');
+          if (card) reveal(card);
+        };
+        track.addEventListener('focusin', onFocusIn);
+        removeFocusReveal = () => track.removeEventListener('focusin', onFocusIn);
+
         ScrollTrigger.create({
           trigger: pinTarget,
           start: 'top top',
@@ -75,22 +169,96 @@ export default function Projects() {
           },
         });
 
-        const trackEl = trackRef.current;
-        if (trackEl) {
-          gsap.to(trackEl, {
-            x: () => -(trackEl.scrollWidth - window.innerWidth),
-            ease: 'none',
-            scrollTrigger: {
-              trigger: pinTarget,
-              start: 'top top',
-              end: '+=300%',
-              scrub: true,
+        gsap.to(track, {
+          x: () => -(track.scrollWidth - window.innerWidth),
+          ease: 'none',
+          scrollTrigger: {
+            trigger: pinTarget,
+            start: 'top top',
+            end: '+=300%',
+            scrub: true,
+            onUpdate: () => {
+              if (reducedMotion) return;
+              if (pinTarget.getBoundingClientRect().top > window.innerHeight * 0.4) return;
+              const threshold = window.innerWidth * 0.7;
+              cards.forEach((card) => {
+                if (card.dataset.revealed === 'true') return;
+                if (card.getBoundingClientRect().left <= threshold) reveal(card);
+              });
             },
+          },
+        });
+
+        if (!reducedMotion && cards[0]) {
+          ScrollTrigger.create({
+            trigger: pinTarget,
+            start: 'top 85%',
+            once: true,
+            onEnter: () => reveal(cards[0]),
           });
         }
-      }, containerRef);
+      }, pinTarget);
 
-      return () => ctx.revert();
+      return () => {
+        removeFocusReveal();
+        ctx.revert();
+      };
+    });
+
+    media.add('(max-width: 767px)', () => {
+      let removeFocusReveal = () => {};
+      let revealFrame = 0;
+
+      const ctx = gsap.context(() => {
+        const cards = gsap.utils.toArray<HTMLElement>('.project-card', track);
+        const timelines = new Map<HTMLElement, gsap.core.Timeline>();
+
+        cards.forEach((card) => {
+          delete card.dataset.revealed;
+          if (reducedMotion) {
+            card.dataset.revealed = 'true';
+          } else {
+            timelines.set(card, projectTimeline(card));
+          }
+        });
+
+        const reveal = (card: HTMLElement) => {
+          if (card.dataset.revealed === 'true') return;
+          card.dataset.revealed = 'true';
+          timelines.get(card)?.play();
+        };
+
+        const onFocusIn = (event: FocusEvent) => {
+          if (!(event.target instanceof HTMLElement)) return;
+          const card = event.target.closest<HTMLElement>('.project-card');
+          if (card) reveal(card);
+        };
+        track.addEventListener('focusin', onFocusIn);
+        removeFocusReveal = () => track.removeEventListener('focusin', onFocusIn);
+
+        cards.forEach((card) => {
+          ScrollTrigger.create({
+            trigger: card,
+            start: 'top 88%',
+            once: true,
+            onEnter: () => reveal(card),
+          });
+        });
+
+        if (!reducedMotion) {
+          revealFrame = requestAnimationFrame(() => {
+            cards.forEach((card) => {
+              if (card.getBoundingClientRect().top < window.innerHeight * 0.9) reveal(card);
+            });
+          });
+        }
+      }, pinTarget);
+
+      return () => {
+        cancelAnimationFrame(revealFrame);
+        removeFocusReveal();
+        ctx.revert();
+      };
     });
 
     return () => media.revert();
@@ -102,16 +270,26 @@ export default function Projects() {
       className="relative md:mb-[clamp(-8rem,calc(19rem_-_50vh),0px)]"
       aria-label="Projects section"
     >
+      <style>{`
+        @keyframes proj-plate-drift {
+          0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.7; }
+          50% { transform: translate3d(0, -6px, 0); opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .proj-plate-drift { animation: none !important; }
+        }
+      `}</style>
+
       {/* Section Label */}
       <div className="sticky top-16 z-10 px-6 lg:px-12 py-4 pointer-events-none">
-        <p className="font-mono text-xs tracking-widest text-accent">(02) — PROJECTS</p>
+        <p className="font-mono text-xs tracking-widest text-accent">(03) — PROJECTS</p>
       </div>
 
       <div ref={containerRef} className="md:relative md:h-screen">
         <div className="md:absolute md:inset-x-0 md:top-0 md:h-screen md:overflow-hidden md:bg-bg">
           <div ref={trackRef} className="flex flex-col md:h-full md:flex-row md:items-center">
             {projects.map((project, index) => (
-              <ProjectCard key={index} project={project} />
+              <ProjectCard key={index} project={project} index={index} />
             ))}
           </div>
         </div>
@@ -120,88 +298,311 @@ export default function Projects() {
   );
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project, index }: { project: Project; index: number }) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    setHoverPos({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
-  };
+  // 3D tilt + pointer-tracked glare (fine pointers only).
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const tilts = {
+      x: (_value: number) => {},
+      y: (_value: number) => {},
+    };
+
+    const ctx = gsap.context(() => {
+      gsap.set(card, { transformPerspective: 1000 });
+      tilts.x = gsap.quickTo(card, 'rotationX', { duration: 0.55, ease: 'power3.out' });
+      tilts.y = gsap.quickTo(card, 'rotationY', { duration: 0.55, ease: 'power3.out' });
+    }, card);
+
+    const handleMove = (event: PointerEvent) => {
+      const rect = card.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const x = (event.clientX - rect.left) / rect.width;
+      const y = (event.clientY - rect.top) / rect.height;
+      tilts.y((x - 0.5) * 6);
+      tilts.x(-(y - 0.5) * 6);
+      card.style.setProperty('--gx', (x * 100).toFixed(2) + '%');
+      card.style.setProperty('--gy', (y * 100).toFixed(2) + '%');
+    };
+
+    const handleLeave = () => {
+      tilts.x(0);
+      tilts.y(0);
+      card.style.setProperty('--gx', '50%');
+      card.style.setProperty('--gy', '50%');
+    };
+
+    card.addEventListener('pointermove', handleMove);
+    card.addEventListener('pointerleave', handleLeave);
+
+    return () => {
+      card.removeEventListener('pointermove', handleMove);
+      card.removeEventListener('pointerleave', handleLeave);
+      ctx.revert();
+    };
+  }, []);
+
+  const isLive = project.progress >= 100;
+  const status = isLive ? 'LIVE' : 'IN PROGRESS';
+  const stackCount = pad(project.tech.length);
+  const slug = project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
   return (
-    <div
-      className="w-full flex-shrink-0 px-6 py-6 md:w-screen md:h-screen md:py-0 lg:px-12 flex items-center justify-center"
-    >
+    <div className="w-full flex-shrink-0 px-6 py-6 md:w-screen md:h-screen md:py-0 lg:px-12 flex items-center justify-center">
       <div
         ref={cardRef}
-        onMouseMove={handleMouseMove}
-        className="relative w-full max-w-5xl min-h-[400px] aspect-auto md:min-h-0 md:aspect-video border border-border bg-surface overflow-hidden group"
+        data-progress={project.progress}
+        className="project-card group relative flex w-full max-w-5xl min-h-[400px] flex-col overflow-hidden border border-border bg-surface transition-[border-color] duration-300 hover:border-accent/40 focus-within:border-accent/40 md:min-h-0 md:aspect-video"
         data-cursor-hover
       >
-        {/* Project Header */}
-        <div className="absolute top-0 left-0 right-0 p-8 flex justify-between items-start z-10">
-          <span className="font-display text-6xl italic text-text-muted opacity-50">{project.index}</span>
-          <span className="font-mono text-xs text-text-muted tracking-widest">
-            {project.progress}% COMPLETE
-          </span>
-        </div>
-
-        {/* Background Pattern */}
+        {/* Per-project gradient */}
         <div
-          className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity duration-500"
+          aria-hidden="true"
+          className="absolute inset-0 z-0 opacity-20 transition-opacity duration-500 group-hover:opacity-30"
           style={{ background: project.gradient }}
         />
 
-        {/* Content */}
-        <div className="absolute bottom-0 left-0 right-0 p-8">
-          <h3 className="font-display text-4xl md:text-5xl italic text-text mb-4 group-hover:text-accent transition-colors duration-300">
-            {project.title}
-          </h3>
-          <p className="font-mono text-sm text-text-muted mb-4 max-w-md">{project.description}</p>
-          <div className="flex flex-wrap gap-2 pr-14 md:pr-0">
-            {project.tech.map((t, i) => (
-              <span
-                key={i}
-                className="font-mono text-xs px-3 py-1 border border-border text-text-muted"
-              >
-                {t}
+        {/* Inner grid */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)',
+            backgroundSize: '44px 44px',
+          }}
+        />
+
+        {/* Pointer glare */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[1] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          style={{
+            background:
+              'radial-gradient(480px circle at var(--gx, 50%) var(--gy, 50%), rgba(200,255,61,0.10), transparent 62%)',
+          }}
+        />
+
+        {/* HUD corner brackets */}
+        <span aria-hidden="true" className="pointer-events-none absolute left-3 top-3 z-30 h-3 w-3 border-l border-t border-accent/70 transition-transform duration-300 ease-out group-hover:-translate-x-1.5 group-hover:-translate-y-1.5" />
+        <span aria-hidden="true" className="pointer-events-none absolute right-3 top-3 z-30 h-3 w-3 border-r border-t border-accent/70 transition-transform duration-300 ease-out group-hover:translate-x-1.5 group-hover:-translate-y-1.5" />
+        <span aria-hidden="true" className="pointer-events-none absolute bottom-3 left-3 z-30 h-3 w-3 border-b border-l border-accent/70 transition-transform duration-300 ease-out group-hover:-translate-x-1.5 group-hover:translate-y-1.5" />
+        <span aria-hidden="true" className="pointer-events-none absolute bottom-3 right-3 z-30 h-3 w-3 border-b border-r border-accent/70 transition-transform duration-300 ease-out group-hover:translate-x-1.5 group-hover:translate-y-1.5" />
+
+        {/* Entrance scan */}
+        <div
+          aria-hidden="true"
+          className="proj-scan pointer-events-none absolute inset-x-0 top-0 z-20 h-px opacity-0"
+          style={{
+            background: 'linear-gradient(90deg, transparent, rgba(200,255,61,0.9), transparent)',
+            boxShadow: '0 0 12px rgba(200,255,61,0.55)',
+          }}
+        />
+
+        <header className="relative z-[2] flex items-start justify-between gap-4 px-6 pt-5 lg:px-8 lg:pt-7">
+          <span className="proj-index font-display text-4xl italic leading-none text-text/25 transition-colors duration-300 group-hover:text-accent/40 lg:text-5xl">
+            {project.index}
+          </span>
+          <span
+            className={
+              'proj-pill mt-1 inline-flex shrink-0 items-center gap-2 border px-2.5 py-1 font-mono text-[9px] tracking-[0.18em] ' +
+              (isLive
+                ? 'border-accent/25 bg-accent/[0.05] text-accent'
+                : 'border-border bg-bg/40 text-text/70')
+            }
+          >
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent shadow-[0_0_8px_rgba(200,255,61,0.55)]"
+            />
+            {status}
+          </span>
+        </header>
+
+        <div className="relative z-[2] flex min-h-0 flex-1 flex-col gap-4 px-6 pb-5 pt-3 lg:flex-row lg:items-stretch lg:gap-8 lg:px-8 lg:pb-5 lg:pt-1">
+          <div className="flex min-w-0 flex-1 flex-col justify-center">
+            <h3 className="font-display text-4xl italic leading-[1.02] text-text transition-colors duration-300 group-hover:text-accent lg:text-5xl">
+              <span className="-mb-[0.12em] block overflow-hidden pb-[0.12em]">
+                <span className="proj-title-inner block">{project.title}</span>
               </span>
-            ))}
+            </h3>
+
+            <p className="proj-desc mt-2 max-w-md font-mono text-[12px] leading-relaxed text-text-muted md:text-[13px]">
+              {project.description}
+            </p>
+
+            <p className="proj-meta mt-3 font-mono text-[9px] tracking-[0.18em] text-text-muted">
+              STACK: {stackCount}
+              <span aria-hidden="true" className="mx-1.5 text-text-muted/40">·</span>
+              STATUS: <span className={isLive ? 'text-accent/80' : 'text-text/70'}>{status}</span>
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {project.tech.map((tech) => (
+                <span
+                  key={tech}
+                  className="proj-chip border border-border px-3 py-1 font-mono text-xs text-text-muted"
+                >
+                  {tech}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Abstract preview plate (desktop) or project image */}
+          <div aria-hidden="true" className="proj-preview relative hidden min-h-0 shrink-0 overflow-hidden border border-border/80 bg-bg/50 lg:flex lg:w-[37%] lg:max-w-[360px] lg:flex-col">
+            {project.image ? (
+              <>
+                <img
+                  src={project.image}
+                  alt=""
+                  width={800}
+                  height={600}
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover grayscale brightness-[0.65] transition-[filter,transform] duration-700 group-hover:scale-[1.02] group-hover:grayscale-0 group-hover:brightness-100"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/25 to-transparent opacity-80 transition-opacity duration-500 group-hover:opacity-40" />
+                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between border-b border-border/50 bg-bg/40 px-3 py-2 font-mono text-[8px] tracking-[0.2em] text-text-muted">
+                  <span>PREVIEW // {project.index.replace(/\D/g, '')}</span>
+                  <span className="text-accent">{status}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 opacity-[0.05]"
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)',
+                    backgroundSize: '32px 32px',
+                  }}
+                />
+
+                <div className="proj-preview-parallax relative z-[1] flex h-full flex-col p-4 transition-transform duration-500 ease-out group-hover:-translate-y-1 group-hover:translate-x-1">
+                  <div className="flex items-center justify-between border-b border-border/60 pb-2 font-mono text-[8px] tracking-[0.16em] text-text-muted">
+                    <span className="flex items-center gap-1">
+                      <span className="h-1 w-1 bg-accent/70" />
+                      <span className="h-1 w-1 bg-text/20" />
+                      <span className="h-1 w-1 bg-text/20" />
+                    </span>
+                    <span className="truncate px-2 text-text-muted/80">~/build/{slug}</span>
+                    <span className="text-accent/80">{project.index}</span>
+                  </div>
+
+                  <div
+                    aria-hidden="true"
+                    className="proj-plate-drift relative mt-3 flex min-h-0 flex-1 flex-col"
+                    style={{ animation: 'proj-plate-drift 16s ease-in-out infinite', animationDelay: '-' + index * 2.4 + 's' }}
+                  >
+                    <div className="relative flex-1 overflow-hidden border border-border/70 bg-bg/40 p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="h-1 w-10 bg-accent/60" />
+                        <span className="h-1 w-5 bg-text/20" />
+                      </div>
+                      <div className="mt-2 flex items-center gap-1.5">
+                        <span className="h-1 w-14 bg-text/15" />
+                        <span className="h-1 w-8 bg-text/10" />
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-3 gap-1.5">
+                        <div className="col-span-2 h-16 border border-border/80 bg-text/[0.02] p-2">
+                          <div className="h-1 w-8 bg-accent/50" />
+                          <div className="mt-1 h-1 w-12 bg-text/10" />
+                          <div className="mt-3 h-6 border border-border/60" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="h-5 border border-accent/25 bg-accent/[0.03]" />
+                          <div className="h-4 border border-border/70" />
+                          <div className="h-4 border border-border/70" />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex h-10 items-end gap-1">
+                        {PLATE_BARS.map((height, barIndex) => (
+                          <span
+                            key={barIndex}
+                            className={barIndex % 3 === 1 ? 'flex-1 bg-accent/30' : 'flex-1 bg-text/10'}
+                            style={{ height: height + '%' }}
+                          />
+                        ))}
+                      </div>
+                      <span className="absolute bottom-2 right-2 font-mono text-[8px] tracking-[0.14em] text-accent/60">
+                        {project.progress}%
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between font-mono text-[8px] tracking-[0.16em] text-text-muted">
+                      <span>STACK {stackCount}</span>
+                      <span className="flex items-center gap-1 text-accent/80">
+                        <span aria-hidden="true" className="h-1 w-1 animate-pulse rounded-full bg-accent" />
+                        RENDER OK
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {project.github && (
-          <a
-            href={project.github}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`${project.title} on GitHub`}
-            data-cursor-hover
-            onClick={(e) => e.stopPropagation()}
-            className="absolute bottom-6 right-6 z-20 flex h-12 w-12 items-center justify-center pointer-events-auto text-accent drop-shadow-[0_0_6px_rgba(200,255,61,0.7)] focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              className="h-7 w-7 overflow-visible fill-current"
-            >
-              <path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.56.1.76-.24.76-.54v-2.1c-3.1.67-3.76-1.32-3.76-1.32-.5-1.28-1.23-1.62-1.23-1.62-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 .1.75 2.6 3.38 1.92.1-.72.39-1.22.7-1.5-2.47-.28-5.06-1.24-5.06-5.5 0-1.22.44-2.21 1.15-2.99-.11-.28-.5-1.42.11-2.96 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.11-1.44 3.05-1.14 3.05-1.14.61 1.54.22 2.68.11 2.96.72.78 1.15 1.77 1.15 2.99 0 4.27-2.6 5.21-5.08 5.49.4.35.75 1.02.75 2.06v3.1c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z" />
-            </svg>
-          </a>
-        )}
+        <footer className="relative z-[2] flex items-end justify-between gap-4 px-6 pb-5 pt-1 lg:px-8 lg:pb-7">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-4 font-mono text-[9px] tracking-[0.2em] text-text-muted">
+              <span>PROGRESS</span>
+              <span className="tabular-nums text-accent">
+                <span className="proj-progress-value">{project.progress}%</span>
+              </span>
+            </div>
+            <div className="mt-2 h-px w-full bg-border">
+              <div
+                className="proj-progress-fill h-px w-full origin-left bg-accent shadow-[0_0_10px_rgba(200,255,61,0.55)]"
+                style={{ transform: 'scaleX(' + project.progress / 100 + ')' }}
+              />
+            </div>
+          </div>
 
-        {/* Hover Preview */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(circle at ${hoverPos.x}px ${hoverPos.y}px, rgba(200, 255, 61, 0.1) 0%, transparent 50%)`,
-          }}
-        />
+          <div className="flex shrink-0 items-center gap-3 pb-0.5">
+            {project.liveUrl && (
+              <a
+                href={project.liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(event) => event.stopPropagation()}
+                data-cursor-hover
+                className="whitespace-nowrap font-mono text-[9px] tracking-[0.18em] text-accent underline-offset-4 transition-colors hover:underline focus-visible:outline-offset-4"
+              >
+                VIEW LIVE <span aria-hidden="true">↗</span>
+              </a>
+            )}
+
+            {project.github && (
+              <a
+                href={project.github}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${project.title} on GitHub`}
+                data-cursor-hover
+                onClick={(event) => event.stopPropagation()}
+                className="flex h-10 w-10 items-center justify-center text-accent drop-shadow-[0_0_6px_rgba(200,255,61,0.7)] transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-6 w-6 overflow-visible fill-current"
+                >
+                  <path d="M12 .9a11.1 11.1 0 0 0-3.51 21.63c.56.1.76-.24.76-.54v-2.1c-3.1.67-3.76-1.32-3.76-1.32-.5-1.28-1.23-1.62-1.23-1.62-1.01-.69.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 .1.75 2.6 3.38 1.92.1-.72.39-1.22.7-1.5-2.47-.28-5.06-1.24-5.06-5.5 0-1.22.44-2.21 1.15-2.99-.11-.28-.5-1.42.11-2.96 0 0 .94-.3 3.05 1.14a10.6 10.6 0 0 1 5.55 0c2.11-1.44 3.05-1.14 3.05-1.14.61 1.54.22 2.68.11 2.96.72.78 1.15 1.77 1.15 2.99 0 4.27-2.6 5.21-5.08 5.49.4.35.75 1.02.75 2.06v3.1c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z" />
+                </svg>
+              </a>
+            )}
+          </div>
+        </footer>
       </div>
     </div>
   );

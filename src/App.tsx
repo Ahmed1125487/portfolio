@@ -1,14 +1,15 @@
-import { Suspense, useState } from 'react'
+import { useState } from 'react'
 import Preloader from './components/Preloader'
 import Navbar from './components/Navbar'
 import Hero from './sections/Hero'
 import About from './sections/About'
+import Certificates from './sections/Certificates'
 import Projects from './sections/Projects'
 import Skills from './sections/Skills'
 import Journey from './sections/Journey'
 import Contact from './sections/Contact'
 import Footer from './sections/Footer'
-import HeroScene from './three/HeroScene'
+import CodeGlyphField from './components/CodeGlyphField'
 import { useSmoothScroll } from './hooks/useSmoothScroll'
 import { useCustomCursor } from './hooks/useCustomCursor'
 
@@ -42,15 +43,14 @@ export default function App() {
       <Navbar isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
 
       <main id="main-content">
-        {/* Hero with 3D Background */}
+        {/* Hero with CodeGlyphField background */}
         <div className="relative min-h-screen">
-          <Suspense fallback={<div className="absolute inset-0 bg-[#0B0B0C]" />}>
-            <HeroScene />
-          </Suspense>
+          <CodeGlyphField />
           <Hero />
         </div>
 
         <About />
+        <Certificates />
         <Projects />
         <Skills />
         <Journey />
