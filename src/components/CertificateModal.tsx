@@ -130,7 +130,7 @@ export default function CertificateModal({ cert, trigger, onClose }: Certificate
             <motion.div
               layoutId={reducedMotion ? undefined : 'certificate-face-' + cert.id}
               transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-              className="relative aspect-[16/10] w-full overflow-hidden border border-border bg-bg"
+              className="relative aspect-[1778/1264] w-full overflow-hidden border border-border bg-bg"
             >
               <CertificateFace cert={cert} variant="modal" />
             </motion.div>
@@ -148,11 +148,13 @@ export default function CertificateModal({ cert, trigger, onClose }: Certificate
               {cert.title}
             </h2>
 
-            <dl className="mt-6 grid grid-cols-2 gap-4 border-y border-border py-4">
-              <div>
-                <dt className="font-mono text-[9px] tracking-[0.2em] text-text-muted">CREDENTIAL ID</dt>
-                <dd className="mt-1 font-mono text-xs text-text">{cert.credentialId}</dd>
-              </div>
+            <dl className={`mt-6 grid gap-4 border-y border-border py-4 ${cert.credentialId ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {cert.credentialId && (
+                <div>
+                  <dt className="font-mono text-[9px] tracking-[0.2em] text-text-muted">CREDENTIAL ID</dt>
+                  <dd className="mt-1 font-mono text-xs text-text">{cert.credentialId}</dd>
+                </div>
+              )}
               <div>
                 <dt className="font-mono text-[9px] tracking-[0.2em] text-text-muted">ISSUED</dt>
                 <dd className="mt-1 font-mono text-xs text-text">{cert.date}</dd>
@@ -171,18 +173,18 @@ export default function CertificateModal({ cert, trigger, onClose }: Certificate
             </div>
 
             <p className="mt-6 font-body text-sm leading-relaxed text-text-muted">
-              Issued by {cert.issuer} and verified against its public record.
+              {cert.verifyUrl
+                ? `Issued by ${cert.issuer} and verified against its public record.`
+                : `Issued by ${cert.issuer} in ${cert.date}.`}
             </p>
 
-            <div className="mt-8">
-              {cert.verifyUrl ? (
+            {cert.verifyUrl && (
+              <div className="mt-8">
                 <MagneticButton onClick={openVerification} className="w-full sm:w-auto">
                   VERIFY ↗
                 </MagneticButton>
-              ) : (
-                <span className="font-mono text-[10px] tracking-[0.18em] text-text-muted">VERIFICATION LINK ON REQUEST</span>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="mt-auto flex items-center justify-between gap-4 border-t border-border pt-4 font-mono text-[9px] tracking-[0.18em] text-text-muted">
               <span>PRESS ESC TO CLOSE</span>

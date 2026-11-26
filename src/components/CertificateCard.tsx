@@ -17,6 +17,7 @@ export default function CertificateCard({ cert, featured = false, isOpen, onOpen
   const copyTimeout = useRef<number | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   const reducedMotion = useReducedMotion() ?? false;
+  const credentialId = cert.credentialId;
 
   // 3D tilt + pointer-tracked specular glare (fine pointers only).
   useLayoutEffect(() => {
@@ -63,8 +64,9 @@ export default function CertificateCard({ cert, featured = false, isOpen, onOpen
   useEffect(() => () => window.clearTimeout(copyTimeout.current), []);
 
   const handleCopy = async () => {
+    if (!credentialId) return;
     try {
-      await navigator.clipboard.writeText(cert.credentialId);
+      await navigator.clipboard.writeText(credentialId);
       setCopied(true);
       window.clearTimeout(copyTimeout.current);
       copyTimeout.current = window.setTimeout(() => setCopied(false), 1600);
@@ -74,11 +76,11 @@ export default function CertificateCard({ cert, featured = false, isOpen, onOpen
   };
 
   const mediaClasses = featured
-    ? 'relative overflow-hidden border border-border bg-bg aspect-[16/10] lg:aspect-auto lg:min-h-[300px] lg:w-[56%] lg:shrink-0'
-    : 'relative overflow-hidden border border-border bg-bg aspect-[16/10]';
+    ? 'relative overflow-hidden border border-border bg-bg aspect-[1778/1264] lg:w-[58%] lg:shrink-0 lg:self-start'
+    : 'relative overflow-hidden border border-border bg-bg aspect-[1778/1264]';
 
   return (
-    <li className={featured ? 'md:col-span-2' : ''}>
+    <li>
       <article
         ref={cardRef}
         className="cert-card group relative flex h-full flex-col overflow-hidden border border-border bg-surface p-5 transition-[border-color,background-color] duration-300 hover:border-accent/40 focus-within:border-accent/40 lg:p-6"
@@ -126,7 +128,7 @@ export default function CertificateCard({ cert, featured = false, isOpen, onOpen
         <div className={featured ? 'relative z-[2] mt-5 flex flex-1 flex-col gap-5 lg:flex-row lg:items-stretch lg:gap-6' : 'relative z-[2] mt-5 flex flex-1 flex-col gap-5'}>
           {/* Certificate face */}
           <div className={mediaClasses}>
-            <div className="cert-parallax absolute inset-x-0 -bottom-[8%] -top-[8%]">
+            <div className={cert.image ? 'absolute inset-0' : 'cert-parallax absolute inset-x-0 -bottom-[8%] -top-[8%]'}>
               <div className="cert-media-blur absolute inset-0 grayscale-[0.55] brightness-90 transition-[filter] duration-500 group-hover:grayscale-0 group-hover:brightness-100">
                 <motion.div
                   layoutId={reducedMotion ? undefined : 'certificate-face-' + cert.id}
@@ -179,11 +181,13 @@ export default function CertificateCard({ cert, featured = false, isOpen, onOpen
               ))}
             </div>
 
-            <div className="mt-auto flex items-center justify-between gap-4 border-t border-border/70 pt-4 pr-16">
-              <span className="font-mono text-[10px] tracking-[0.16em] text-text-muted">
-                ID: {cert.credentialId}
-              </span>
-            </div>
+            {credentialId && (
+              <div className="mt-auto flex items-center justify-between gap-4 border-t border-border/70 pt-4 pr-16">
+                <span className="font-mono text-[10px] tracking-[0.16em] text-text-muted">
+                  ID: {credentialId}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -198,16 +202,18 @@ export default function CertificateCard({ cert, featured = false, isOpen, onOpen
         />
 
         {/* Copy credential ID */}
-        <button
-          type="button"
-          onClick={handleCopy}
-          onPointerDown={(event) => event.stopPropagation()}
-          aria-label={'Copy credential ID ' + cert.credentialId + ' for ' + cert.title}
-          className="absolute bottom-5 right-5 z-20 font-mono text-[10px] tracking-[0.16em] text-text-muted transition-colors duration-300 hover:text-accent focus-visible:outline-offset-2 lg:bottom-6 lg:right-6"
-          data-cursor-hover
-        >
-          <span aria-live="polite">{copied ? 'COPIED' : 'COPY'}</span>
-        </button>
+        {credentialId && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            onPointerDown={(event) => event.stopPropagation()}
+            aria-label={'Copy credential ID ' + credentialId + ' for ' + cert.title}
+            className="absolute bottom-5 right-5 z-20 font-mono text-[10px] tracking-[0.16em] text-text-muted transition-colors duration-300 hover:text-accent focus-visible:outline-offset-2 lg:bottom-6 lg:right-6"
+            data-cursor-hover
+          >
+            <span aria-live="polite">{copied ? 'COPIED' : 'COPY'}</span>
+          </button>
+        )}
       </article>
     </li>
   );

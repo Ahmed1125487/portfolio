@@ -22,12 +22,12 @@ export default function CertificateFace({ cert, variant = 'card' }: CertificateF
     return (
       <img
         src={cert.image}
-        alt={`${cert.title} certificate issued by ${cert.issuer}`}
-        width={1280}
-        height={800}
-        loading="lazy"
+        alt={`${cert.title} certificate from ${cert.issuer}`}
+        width={1778}
+        height={1264}
+        loading={variant === 'modal' ? 'eager' : 'lazy'}
         decoding="async"
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-contain"
       />
     );
   }
@@ -87,7 +87,7 @@ export default function CertificateFace({ cert, variant = 'card' }: CertificateF
         </div>
 
         <div className={'flex items-end justify-between gap-4 font-mono uppercase tracking-[0.2em] text-text-muted/70 ' + mono}>
-          <span>ID {cert.credentialId}</span>
+          <span>{cert.credentialId ? `ID ${cert.credentialId}` : `${cert.index} / ISSUED`}</span>
           <span className="flex items-center gap-2">
             {cert.date}
             <span className="flex h-6 w-6 items-center justify-center rounded-full border border-accent/25">

@@ -13,81 +13,27 @@ export interface Certificate {
   title: string;
   issuer: string;
   date: string;
-  credentialId: string;
+  credentialId?: string;
   skills: string[];
   image?: string;
   verifyUrl?: string;
 }
 
-/*
- * TODO: replace these placeholder credentials with your own.
- *
- * Images live in /public/certificates/ (webp recommended, 1280×800).
- * Add `image: '/certificates/your-file.webp'` to an entry — when `image` is
- * omitted the generated credential face is rendered instead.
- */
-const certificates: Certificate[] = [
+const certificateData: Omit<Certificate, 'index'>[] = [
   {
-    id: 'meta-frontend',
-    index: '(01)',
-    title: 'Meta Front-End Developer Professional Certificate',
-    issuer: 'Coursera',
+    id: 'react-diploma',
+    title: 'ReactJS Diploma',
+    issuer: 'Route IT Training Center',
     date: '2025',
-    credentialId: '8F3A-2C19',
-    skills: ['React', 'JavaScript', 'UI Engineering'],
-    verifyUrl: 'https://www.coursera.org/account/accomplishments/professional-cert/8F3A2C19',
-  },
-  {
-    id: 'advanced-react',
-    index: '(02)',
-    title: 'Advanced React & TypeScript',
-    issuer: 'Frontend Masters',
-    date: '2025',
-    credentialId: 'C7D1-4B02',
-    skills: ['React', 'TypeScript', 'Architecture'],
-    verifyUrl: 'https://frontendmasters.com/certificates/c7d1-4b02/',
-  },
-  {
-    id: 'jsnad',
-    index: '(03)',
-    title: 'Node.js Certified Developer (JSNAD)',
-    issuer: 'OpenJS Foundation',
-    date: '2024',
-    credentialId: 'A2E8-91F4',
-    skills: ['Node.js', 'REST APIs', 'Testing'],
-    verifyUrl: 'https://openjsf.org/certification/',
-  },
-  {
-    id: 'cs50x',
-    index: '(04)',
-    title: 'CS50x: Introduction to Computer Science',
-    issuer: 'HarvardX',
-    date: '2024',
-    credentialId: 'D4B7-63E0',
-    skills: ['C', 'Algorithms', 'Data Structures'],
-    verifyUrl: 'https://cs50.harvard.edu/x/',
-  },
-  {
-    id: 'problem-solving',
-    index: '(05)',
-    title: 'Problem Solving (Intermediate)',
-    issuer: 'HackerRank',
-    date: '2023',
-    credentialId: 'E9C3-17A5',
-    skills: ['Algorithms', 'Data Structures', 'Problem Solving'],
-    verifyUrl: 'https://www.hackerrank.com/certificates/e9c317a5',
-  },
-  {
-    id: 'responsive-web',
-    index: '(06)',
-    title: 'Responsive Web Design',
-    issuer: 'freeCodeCamp',
-    date: '2023',
-    credentialId: 'B5F0-2D68',
-    skills: ['HTML5', 'CSS3', 'Accessibility'],
-    verifyUrl: 'https://www.freecodecamp.org/certification/ahmed-atef/responsive-web-design',
+    skills: ['React', 'JavaScript', 'Hooks', 'State Management', 'Routing'],
+    image: import.meta.env.BASE_URL + 'certificates/react-diploma.webp',
   },
 ];
+
+const certificates: Certificate[] = certificateData.map((cert, index) => ({
+  ...cert,
+  index: `(${String(index + 1).padStart(2, '0')})`,
+}));
 
 const LABEL = '(02) — CERTIFICATES';
 const SCRAMBLE_GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/<>*#';
@@ -198,6 +144,15 @@ export default function Certificates() {
   const years = certificates.map((cert) => Number.parseInt(cert.date, 10));
   const yearStart = Math.min(...years);
   const yearEnd = Math.max(...years);
+  const yearLabel = yearStart === yearEnd ? String(yearStart) : `${yearStart}—${yearEnd}`;
+  const certificateNoun = certificateCount === 1 ? 'certificate' : 'certificates';
+  const issuerNoun = issuerCount === 1 ? 'issuer' : 'issuers';
+  const isSingle = certificateCount === 1;
+  const gridColumns = isSingle
+    ? 'grid-cols-1'
+    : certificateCount === 2
+      ? 'grid-cols-1 md:grid-cols-2'
+      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
 
   // Intro: label decrypts, headline masks up, rule draws.
   useLayoutEffect(() => {
@@ -363,7 +318,7 @@ export default function Certificates() {
     >
       <style>{`@keyframes cert-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } } @media (prefers-reduced-motion: reduce) { .cert-stream { animation: none !important; } }`}</style>
 
-      <AmbientStream ids={certificates.map((cert) => cert.credentialId)} />
+      <AmbientStream ids={certificates.map((cert) => cert.credentialId ?? cert.title.toUpperCase())} />
 
       <div className="relative z-[1] max-w-[1440px] mx-auto">
         <p className="mb-4 min-h-[1.125rem] font-mono text-xs tracking-widest text-accent">
@@ -393,25 +348,25 @@ export default function Certificates() {
 
         <div
           className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] tracking-[0.18em] text-text-muted sm:text-xs"
-          aria-label={`${certificateCount} certificates, ${issuerCount} issuers, ${yearStart} to ${yearEnd}`}
+          aria-label={`${certificateCount} ${certificateNoun}, ${issuerCount} ${issuerNoun}, ${yearLabel}`}
         >
           <span aria-hidden="true" className="flex items-baseline gap-2">
-            <span className="text-accent"><CountUp value={certificateCount} /></span> CERTIFICATES
+            <span className="text-accent"><CountUp value={certificateCount} /></span> {certificateCount === 1 ? 'CERTIFICATE' : 'CERTIFICATES'}
           </span>
           <span aria-hidden="true" className="text-text-muted/40">·</span>
           <span aria-hidden="true" className="flex items-baseline gap-2">
-            <span className="text-accent"><CountUp value={issuerCount} /></span> ISSUERS
+            <span className="text-accent"><CountUp value={issuerCount} /></span> {issuerCount === 1 ? 'ISSUER' : 'ISSUERS'}
           </span>
           <span aria-hidden="true" className="text-text-muted/40">·</span>
-          <span aria-hidden="true" className="tabular-nums text-accent">{yearStart}—{yearEnd}</span>
+          <span aria-hidden="true" className="tabular-nums text-accent">{yearLabel}</span>
         </div>
 
-        <ul className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2 lg:mt-16 lg:grid-cols-3 lg:gap-8" aria-label="Verified certificates">
-          {certificates.map((cert, index) => (
+        <ul className={`mt-12 grid gap-6 lg:mt-16 lg:gap-8 ${gridColumns}`} aria-label="Certificates">
+          {certificates.map((cert) => (
             <CertificateCard
               key={cert.id}
               cert={cert}
-              featured={index === 0}
+              featured={isSingle}
               isOpen={active?.cert.id === cert.id}
               onOpen={handleOpen}
             />
