@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useCairoTime } from '../hooks/useTime';
+import Logo from './Logo';
 
 interface NavbarProps {
   isMenuOpen: boolean;
@@ -101,13 +102,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
         aria-label="Main navigation"
       >
         <div className="max-w-[1440px] mx-auto px-6 lg:px-12 h-16 flex items-center justify-between border-b border-border">
-          <a
-            href="#hero"
-            onClick={(e) => { e.preventDefault(); handleNavClick('#hero'); }}
-            className="font-display text-xl italic text-text hover:text-accent transition-colors py-2"
-          >
-            AHMED.
-          </a>
+          <a href="#hero" onClick={(e) => { e.preventDefault(); handleNavClick('#hero'); }} className="group flex items-center py-2" aria-label="Ahmed Atef — home"><Logo /></a>
 
           {/* Desktop Nav */}
           <ul className="hidden lg:flex items-center gap-5 xl:gap-8">
