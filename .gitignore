@@ -26,3 +26,5 @@ screenshots/
 *.njsproj
 *.sln
 *.sw?
+
+.qa-phase2/

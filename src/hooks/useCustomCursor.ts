@@ -6,7 +6,8 @@ export function useCustomCursor() {
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) return;
+    const hasFinePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if (prefersReducedMotion || !hasFinePointer) return;
 
     const dot = dotRef.current;
     const ring = ringRef.current;
@@ -16,10 +17,13 @@ export function useCustomCursor() {
     let targetY = 0;
     let currentX = 0;
     let currentY = 0;
+    let frame = 0;
 
     const onMouseMove = (e: MouseEvent) => {
       targetX = e.clientX;
       targetY = e.clientY;
+      dot.style.opacity = '1';
+      ring.style.opacity = '1';
     };
 
     const onMouseEnterLink = (e: MouseEvent) => {
@@ -31,7 +35,11 @@ export function useCustomCursor() {
 
     const onMouseLeaveLink = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest('a, button, [data-cursor-hover]')) {
+      const related = e.relatedTarget as HTMLElement | null;
+      if (
+        target.closest('a, button, [data-cursor-hover]') &&
+        !related?.closest?.('a, button, [data-cursor-hover]')
+      ) {
         ring.classList.remove('hovering');
       }
     };
@@ -44,15 +52,16 @@ export function useCustomCursor() {
       dot.style.transform = `translate(${targetX - 3}px, ${targetY - 3}px)`;
       ring.style.transform = `translate(${currentX - 16}px, ${currentY - 16}px)`;
 
-      requestAnimationFrame(animate);
+      frame = requestAnimationFrame(animate);
     };
 
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseover', onMouseEnterLink);
     document.addEventListener('mouseout', onMouseLeaveLink);
-    requestAnimationFrame(animate);
+    frame = requestAnimationFrame(animate);
 
     return () => {
+      cancelAnimationFrame(frame);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseover', onMouseEnterLink);
       document.removeEventListener('mouseout', onMouseLeaveLink);

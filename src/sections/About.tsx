@@ -9,20 +9,26 @@ function Word({ word }: WordProps) {
   const wordRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (!wordRef.current) return;
+    const el = wordRef.current;
+    if (!el) return;
 
-    ScrollTrigger.create({
-      trigger: wordRef.current,
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.style.opacity = '1';
+      return;
+    }
+
+    const trigger = ScrollTrigger.create({
+      trigger: el,
       start: 'top bottom',
       end: 'bottom top',
       scrub: true,
       onUpdate: (self) => {
-        const el = wordRef.current;
-        if (!el) return;
-        const opacity = self.progress * 0.6 + 0.2;
-        el.style.opacity = String(opacity);
+        // Keep the scrub effect while never fading copy below readable contrast.
+        el.style.opacity = String(0.55 + self.progress * 0.45);
       },
     });
+
+    return () => trigger.kill();
   }, []);
 
   return (
@@ -38,12 +44,13 @@ export default function About() {
   const stats = [
     { label: 'Years Experience', value: 3 },
     { label: 'Projects Completed', value: 15 },
-    { label: 'Technologies', value: 12 },
+    { label: 'Technologies', value: 21 },
     { label: 'Open Source Contributions', value: 8 },
   ];
 
   return (
     <section id="about" className="py-32 px-6 lg:px-12 relative" aria-label="About section">
+      <h2 className="sr-only">About</h2>
       {/* Section Label */}
       <p className="font-mono text-xs tracking-widest text-accent mb-4">(01) — ABOUT</p>
 
@@ -79,30 +86,41 @@ function StatItem({ label, value }: { label: string; value: number }) {
   const countRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
+    const el = countRef.current;
+    if (!el) return;
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = value.toString();
+      return;
+    }
+
+    let interval: number | undefined;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && countRef.current) {
-          const el = countRef.current;
-          let current = 0;
-          const step = Math.ceil(value / 30);
-          const interval = setInterval(() => {
-            current += step;
-            if (current >= value) {
-              current = value;
-              clearInterval(interval);
-            }
-            el.textContent = current.toString();
-          }, 30);
-        }
+        if (!entry.isIntersecting || interval !== undefined) return;
+        observer.disconnect();
+
+        let current = 0;
+        const step = Math.ceil(value / 30);
+        interval = window.setInterval(() => {
+          current += step;
+          if (current >= value) {
+            current = value;
+            window.clearInterval(interval);
+            interval = undefined;
+          }
+          el.textContent = current.toString();
+        }, 30);
       },
       { threshold: 0.5 }
     );
 
-    if (countRef.current) {
-      observer.observe(countRef.current);
-    }
+    observer.observe(el);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (interval !== undefined) window.clearInterval(interval);
+    };
   }, [value]);
 
   return (

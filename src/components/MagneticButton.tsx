@@ -19,6 +19,8 @@ export default function MagneticButton({
   useEffect(() => {
     const btn = buttonRef.current;
     if (!btn) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = btn.getBoundingClientRect();
@@ -51,10 +53,12 @@ export default function MagneticButton({
     return () => {
       btn.removeEventListener('mousemove', handleMouseMove);
       btn.removeEventListener('mouseleave', handleMouseLeave);
+      gsap.killTweensOf(btn);
+      gsap.set(btn, { clearProps: 'transform' });
     };
   }, []);
 
-  const baseClasses = 'relative font-mono text-sm tracking-wider px-8 py-4 transition-all duration-300';
+  const baseClasses = 'relative font-mono text-sm tracking-wider px-8 py-4 transition-colors duration-300';
   const variantClasses = variant === 'primary'
     ? 'bg-accent text-bg hover:bg-accent/90'
     : 'border border-border text-text hover:border-accent hover:text-accent';
@@ -62,6 +66,7 @@ export default function MagneticButton({
   return (
     <button
       ref={buttonRef}
+      type="button"
       onClick={onClick}
       className={`${baseClasses} ${variantClasses} ${className}`}
       data-cursor-hover

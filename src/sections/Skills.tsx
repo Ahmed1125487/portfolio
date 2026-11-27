@@ -130,8 +130,9 @@ function SkillPanel({
           <span aria-hidden='true' className='font-mono text-xs tracking-widest text-accent'>
             {pad2(index + 1)}
           </span>
-          <span aria-label={items.length + ' technologies'} className='font-mono text-[10px] tracking-[0.18em] text-text-muted'>
-            {pad2(items.length)}
+          <span className='font-mono text-[10px] tracking-[0.18em] text-text-muted'>
+            <span aria-hidden='true'>{pad2(items.length)}</span>
+            <span className='sr-only'>{items.length} technologies</span>
           </span>
         </div>
 
@@ -147,7 +148,6 @@ function SkillPanel({
           {items.map((item, rowIndex) => (
             <li
               key={item}
-              tabIndex={0}
               className='skill-row relative border-b border-border/60 last:border-b-0'
             >
               <div
@@ -155,7 +155,7 @@ function SkillPanel({
                 style={{ '--i': rowIndex } as React.CSSProperties}
               >
                 <div className='grid grid-cols-[2.5rem_1fr_auto] items-center gap-2 py-3'>
-                  <span className='skill-row-number font-mono text-[11px] tracking-widest text-text-muted/60'>
+                  <span className='skill-row-number font-mono text-[11px] tracking-widest text-text-muted'>
                     {pad2(rowIndex + 1)}
                   </span>
                   <span className='skill-row-name min-w-0 font-mono text-sm text-text-muted'>
@@ -191,7 +191,7 @@ export default function Skills() {
   const visibleRef = useRef(true);
   const ioRef = useRef<IntersectionObserver | null>(null);
   const scrollXRef = useRef(0);
-  const lastTimeRef = useRef(performance.now());
+  const lastTimeRef = useRef(0);
   const totalWidthRef = useRef(0);
 
   // Reduced-motion check
@@ -207,11 +207,16 @@ export default function Skills() {
 
     mobRef.current = window.innerWidth < 640;
     let items: HTMLElement[] = [];
+    const updateWidth = () => {
+      totalWidthRef.current = track.scrollWidth / 2;
+    };
     const collectItems = () => {
       mobRef.current = window.innerWidth < 640;
       items = Array.from(track.parentElement!.querySelectorAll<HTMLElement>('.marquee-item'));
+      updateWidth();
     };
     collectItems();
+    void document.fonts?.ready.then(updateWidth);
     window.addEventListener('resize', collectItems);
 
     const tick = (time: number) => {
@@ -219,12 +224,13 @@ export default function Skills() {
       if (!visibleRef.current) return;
 
       // Marquee scroll: default 65px/s, optional ?marqueeSpeed= param
+      if (lastTimeRef.current === 0) lastTimeRef.current = time;
       const delta = Math.min(time - lastTimeRef.current, 50);
       lastTimeRef.current = time;
       const speedPxPerSec = 65;
       scrollXRef.current -= speedPxPerSec * (delta / 1000);
       const tw = totalWidthRef.current;
-      if (tw > 0 && scrollXRef.current <= -tw) scrollXRef.current += tw;
+      if (tw > 0 && scrollXRef.current <= -tw) scrollXRef.current %= tw;
       track.style.transform = `translateX(${scrollXRef.current}px)`;
 
       // Spotlight glow: read then write
@@ -259,7 +265,7 @@ export default function Skills() {
       if (track) {
         totalWidthRef.current = track.scrollWidth / 2;
         track.querySelectorAll<HTMLElement>('.marquee-item').forEach(item => {
-          item.style.setProperty('--glow', '0.6');
+          item.style.setProperty('--glow', '1');
         });
         track.style.transform = 'translateX(0)';
       }
@@ -295,6 +301,7 @@ export default function Skills() {
 
   return (
     <section id="skills" className="py-32 px-6 lg:px-12 relative" aria-label="Skills section">
+      <h2 className="sr-only">Skills</h2>
       <p className="font-mono text-xs tracking-widest text-accent mb-4">(04) — SKILLS</p>
 
       <div className="max-w-[1440px] mx-auto mb-20">
@@ -360,28 +367,23 @@ export default function Skills() {
             transform-origin: left;
             transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
           }
-          .skill-row:hover .skill-row-name,
-          .skill-row:focus-visible .skill-row-name {
+          .skill-row:hover .skill-row-name {
             color: var(--color-text);
             transform: translateX(6px);
           }
-          .skill-row:hover .skill-row-number,
-          .skill-row:focus-visible .skill-row-number {
+          .skill-row:hover .skill-row-number {
             color: var(--color-accent);
           }
-          .skill-row:hover .skill-row-arrow,
-          .skill-row:focus-visible .skill-row-arrow {
+          .skill-row:hover .skill-row-arrow {
             opacity: 1;
             transform: translateX(0);
           }
-          .skill-row:hover .skill-row-underline,
-          .skill-row:focus-visible .skill-row-underline {
+          .skill-row:hover .skill-row-underline {
             transform: scaleX(1);
           }
           @media (hover: hover) {
-            .skill-list:has(.skill-row:hover) .skill-row:not(:hover),
-            .skill-list:has(.skill-row:focus-visible) .skill-row:not(:focus-visible) {
-              opacity: 0.45;
+            .skill-list:has(.skill-row:hover) .skill-row:not(:hover) {
+              opacity: 0.55;
             }
           }
           @media (prefers-reduced-motion: reduce) {

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface PreloaderProps {
   onComplete: () => void;
@@ -7,41 +7,57 @@ interface PreloaderProps {
 export default function Preloader({ onComplete }: PreloaderProps) {
   const [count, setCount] = useState(0);
   const [isExiting, setIsExiting] = useState(false);
-  const frameRef = useRef<number>(0);
-  const doneRef = useRef(false);
-  const startMs = useRef<number>(0);
 
-  // Start counting immediately on mount
-  if (startMs.current === 0) startMs.current = performance.now();
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const duration = reduced ? 300 : 2000;
+    const startedAt = performance.now();
+    let frame = 0;
+    let exitTimer = 0;
+    let lastCount = -1;
+    let completed = false;
 
-  // Animation loop
-  const tick = () => {
-    if (doneRef.current) return;
-    const elapsed = performance.now() - startMs.current;
-    const progress = Math.min(elapsed / 2000, 1);
-    const nextCount = Math.floor(progress * 100);
+    const tick = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const nextCount = Math.floor(progress * 100);
 
-    if (nextCount !== count) {
-      setCount(nextCount);
-    }
+      if (nextCount !== lastCount) {
+        lastCount = nextCount;
+        setCount(nextCount);
+      }
 
-    if (progress < 1) {
-      frameRef.current = requestAnimationFrame(tick);
-    } else {
-      // Reached 100 — trigger exit
-      doneRef.current = true;
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+        return;
+      }
+
+      if (completed) return;
+      completed = true;
       setCount(100);
       setIsExiting(true);
-      setTimeout(() => onComplete(), 850); // wait for CSS transition
-    }
-  };
+      exitTimer = window.setTimeout(onComplete, reduced ? 50 : 850);
+    };
 
-  // Start the loop once on mount
-  frameRef.current = requestAnimationFrame(tick);
+    frame = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(exitTimer);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [onComplete]);
 
   return (
-    <div className="preloader fixed inset-0 z-[100] bg-[#0B0B0C] overflow-hidden">
+    <div
+      className={`preloader fixed inset-0 z-[100] overflow-hidden bg-[#0B0B0C] transition-opacity duration-700 ${isExiting ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="sr-only">Loading portfolio</span>
       <div
+        aria-hidden="true"
         className={`absolute inset-0 flex items-center justify-center transition-transform duration-700 ease-in-out ${
           isExiting ? '-translate-y-full' : ''
         }`}

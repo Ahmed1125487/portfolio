@@ -161,7 +161,7 @@ const buildGeometry = (width: number, isDesktop: boolean): MissionGeometry => {
 };
 
 export default function Journey() {
-  const containerRef = useRef<HTMLOListElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const basePathRef = useRef<SVGPathElement>(null);
   const progressPathRef = useRef<SVGPathElement>(null);
   const trailRef = useRef<SVGPathElement>(null);
@@ -297,6 +297,7 @@ export default function Journey() {
 
   return (
     <section id="journey" className="py-32 px-6 lg:px-12 relative" aria-label="Journey section">
+      <h2 className="sr-only">Journey and experience</h2>
       <p className="font-mono text-xs tracking-widest text-accent mb-4">(05) — JOURNEY</p>
 
       <style>{`
@@ -307,14 +308,11 @@ export default function Journey() {
           background-size: 22px 22px;
         }
         .journey-card {
-          opacity: 0.45;
           transform: translateY(16px);
-          transition:
-            opacity 0.5s cubic-bezier(0.2, 0.7, 0.2, 1),
-            transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+          transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
         }
-        .journey-card.is-reached {
-          opacity: 1;
+        .journey-card.is-reached,
+        .journey-card.is-expected {
           transform: translateY(0);
         }
         .waypoint-pulse {
@@ -347,10 +345,11 @@ export default function Journey() {
       `}</style>
 
       <div className="mx-auto mt-12 max-w-[1200px] lg:mt-16">
-        <ol
+        <div
           ref={containerRef}
           className="relative"
           style={{ height: geometry?.height ?? TOP_PAD * 2 + (count - 1) * STEP }}
+          role="list"
           aria-label="Journey milestones"
         >
           {geometry && (
@@ -469,8 +468,9 @@ export default function Journey() {
                 const isReached = index < reachedCount;
 
                 return (
-                  <li
+                  <div
                     key={`${item.year}-${item.title}`}
+                    role="listitem"
                     className="absolute z-10"
                     style={{
                       left: card.x,
@@ -480,7 +480,7 @@ export default function Journey() {
                     }}
                   >
                     <div
-                      className={`journey-card journey-card-grid relative border border-border bg-surface/60 p-5 lg:p-6${isReached ? " is-reached" : ""}`}
+                      className={`journey-card journey-card-grid relative border border-border bg-surface/60 p-5 lg:p-6${isReached ? " is-reached" : ""}${index === count - 1 ? " is-expected" : ""}`}
                     >
                       <span aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-3 w-3 border-l border-t border-accent/80" />
                       <span aria-hidden="true" className="pointer-events-none absolute right-0 top-0 h-3 w-3 border-r border-t border-accent/80" />
@@ -493,7 +493,7 @@ export default function Journey() {
                         </p>
 
                         <div
-                          className={`mt-4 font-display text-6xl italic leading-none ${isReached ? "text-accent" : "text-text-muted/50"}`}
+                          className={`mt-4 font-display text-6xl italic leading-none ${isReached ? "text-accent" : "text-text-muted/70"}`}
                         >
                           {item.year}
                         </div>
@@ -512,12 +512,12 @@ export default function Journey() {
                         )}
                       </div>
                     </div>
-                  </li>
+                  </div>
                 );
               })}
             </>
           )}
-        </ol>
+        </div>
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 h-px bg-border hidden md:block" />

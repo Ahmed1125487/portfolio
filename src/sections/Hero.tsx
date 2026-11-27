@@ -1,41 +1,44 @@
 import { useRef, useEffect } from 'react';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import MagneticButton from '../components/MagneticButton';
-
-gsap.registerPlugin(ScrollTrigger);
+import { scrollToSection } from '../hooks/useSmoothScroll';
 
 export default function Hero() {
   const heroRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    if (!nameRef.current) return;
+    const hero = heroRef.current;
+    if (!hero || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const el = nameRef.current;
-    const lines = el.querySelectorAll('.line');
+    const ctx = gsap.context(() => {
+      const el = nameRef.current;
+      if (!el) return;
 
-    gsap.fromTo(lines,
-      { y: 80, opacity: 0 },
-      {
-        y: 0,
-        opacity: 1,
-        duration: 1.2,
-        stagger: 0.15,
-        ease: 'power3.out',
-        delay: 0.5,
-      }
-    );
+      gsap.fromTo(el.querySelectorAll('.line'),
+        { y: 80, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 1.1,
+          stagger: 0.12,
+          ease: 'power3.out',
+          delay: 1.85,
+        }
+      );
 
-    gsap.fromTo('.availability-badge',
-      { opacity: 0, scale: 0.8 },
-      { opacity: 1, scale: 1, duration: 0.6, delay: 1.2 }
-    );
+      gsap.fromTo('.availability-badge',
+        { opacity: 0, scale: 0.8 },
+        { opacity: 1, scale: 1, duration: 0.55, delay: 2.35 }
+      );
 
-    gsap.fromTo('.hero-cta',
-      { opacity: 0, y: 20 },
-      { opacity: 1, y: 0, duration: 0.8, delay: 1.5, stagger: 0.1 }
-    );
+      gsap.fromTo('.hero-cta',
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.7, delay: 2.6, stagger: 0.1 }
+      );
+    }, hero);
+
+    return () => ctx.revert();
   }, []);
 
   return (
@@ -63,21 +66,21 @@ export default function Hero() {
         </div>
 
         <div className="hero-cta flex flex-wrap gap-4 ml-2">
-          <MagneticButton onClick={() => document.querySelector('#projects')?.scrollIntoView({ behavior: 'smooth' })}>
+          <MagneticButton onClick={() => scrollToSection('#projects')}>
             VIEW PROJECTS
           </MagneticButton>
-          <MagneticButton variant="secondary" onClick={() => document.querySelector('#contact')?.scrollIntoView({ behavior: 'smooth' })}>
+          <MagneticButton variant="secondary" onClick={() => scrollToSection('#contact')}>
             GET IN TOUCH
           </MagneticButton>
         </div>
+      </div>
 
-        {/* Scroll Indicator */}
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
-          <span className="font-mono text-xs text-text-muted tracking-widest rotate-90 origin-center translate-y-8">
-            SCROLL
-          </span>
-          <div className="w-px h-16 bg-gradient-to-b from-accent to-transparent mt-8" />
-        </div>
+      {/* Scroll Indicator */}
+      <div className="absolute bottom-12 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 sm:flex">
+        <span className="translate-y-8 rotate-90 font-mono text-xs tracking-widest text-text-muted">
+          SCROLL
+        </span>
+        <div className="mt-8 h-16 w-px bg-gradient-to-b from-accent to-transparent" />
       </div>
 
       {/* Grid Lines */}

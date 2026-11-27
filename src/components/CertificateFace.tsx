@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Certificate } from '../sections/Certificates';
 
 interface CertificateFaceProps {
@@ -18,7 +19,9 @@ function monogramFor(issuer: string) {
  * credential face so a card never looks broken.
  */
 export default function CertificateFace({ cert, variant = 'card' }: CertificateFaceProps) {
-  if (cert.image) {
+  const [failed, setFailed] = useState(false);
+
+  if (cert.image && !failed) {
     return (
       <img
         src={cert.image}
@@ -28,6 +31,7 @@ export default function CertificateFace({ cert, variant = 'card' }: CertificateF
         loading={variant === 'modal' ? 'eager' : 'lazy'}
         decoding="async"
         className="absolute inset-0 h-full w-full object-contain"
+        onError={() => setFailed(true)}
       />
     );
   }

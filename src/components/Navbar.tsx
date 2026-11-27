@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { useCairoTime } from '../hooks/useTime';
+import { getLenis, scrollToSection, scrollToTop } from '../hooks/useSmoothScroll';
 import Logo from './Logo';
 
 interface NavbarProps {
@@ -19,17 +20,19 @@ const navLinks = [
 
 export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const [isScrolled, setIsScrolled] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const skipFocusRestore = useRef(false);
+  const [isScrolled, setIsScrolled] = useState(() => typeof window !== 'undefined' && window.scrollY > 50);
   const [isNavHidden, setIsNavHidden] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const currentTime = useCairoTime();
 
   useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let previousScrollY = window.scrollY;
     let accumulatedDelta = 0;
     let lastDirection = 0;
     let stopTimeout: number | undefined;
-
-    setIsScrolled(previousScrollY > 50);
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
@@ -37,6 +40,21 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
       previousScrollY = currentScrollY;
 
       setIsScrolled(currentScrollY > 50);
+
+      let nextActiveSection: string | null = null;
+      const activationLine = window.innerHeight * 0.35;
+      for (const link of navLinks) {
+        const section = document.querySelector<HTMLElement>(link.href);
+        if (section && section.getBoundingClientRect().top <= activationLine) {
+          nextActiveSection = link.href;
+        }
+      }
+      setActiveSection((current) => current === nextActiveSection ? current : nextActiveSection);
+
+      if (prefersReducedMotion) {
+        setIsNavHidden(false);
+        return;
+      }
 
       if (currentScrollY <= 50) {
         setIsNavHidden(false);
@@ -62,6 +80,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -70,25 +89,116 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
   }, []);
 
   useEffect(() => {
+    if (!isMenuOpen) return;
+
     const menu = mobileMenuRef.current;
+    const menuButton = menuButtonRef.current;
     if (!menu) return;
 
-    if (isMenuOpen) {
+    skipFocusRestore.current = false;
+    menu.scrollTop = 0;
+    const lenis = getLenis();
+    const previousOverflow = document.body.style.overflow;
+    lenis?.stop();
+    document.body.style.overflow = 'hidden';
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      gsap.set(menu, { opacity: 1, y: 0 });
+    } else {
       gsap.fromTo(menu,
         { opacity: 0, y: -20 },
         { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }
       );
-    } else {
-      gsap.to(menu, { opacity: 0, y: -20, duration: 0.2 });
     }
-  }, [isMenuOpen]);
+
+    const focusTimer = window.setTimeout(() => {
+      menu.querySelector<HTMLElement>('a[href]')?.focus();
+    }, 0);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsMenuOpen(false);
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusables: HTMLElement[] = [];
+      focusables.push(...menu.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'));
+      if (focusables.length === 0) return;
+
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      lenis?.start();
+      if (!skipFocusRestore.current) menuButton?.focus();
+    };
+  }, [isMenuOpen, setIsMenuOpen]);
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const handleViewportChange = () => {
+      if (desktop.matches) setIsMenuOpen(false);
+    };
+
+    desktop.addEventListener('change', handleViewportChange);
+    return () => desktop.removeEventListener('change', handleViewportChange);
+  }, [setIsMenuOpen]);
+
+  useEffect(() => {
+    const syncToLocation = () => {
+      const hash = window.location.hash;
+      let hasTarget = false;
+      if (hash) {
+        try {
+          hasTarget = Boolean(document.querySelector(hash));
+        } catch {
+          hasTarget = false;
+        }
+      }
+      // Wait for the browser's popstate work (and any history scroll
+      // restoration) to finish before asking Lenis to animate.
+      window.requestAnimationFrame(() => {
+        if (hasTarget) {
+          scrollToSection(hash, false);
+        } else {
+          scrollToTop(false);
+        }
+      });
+    };
+
+    const initialScroll = window.location.hash ? window.setTimeout(syncToLocation, 0) : 0;
+    window.addEventListener('popstate', syncToLocation);
+    window.addEventListener('hashchange', syncToLocation);
+
+    return () => {
+      window.clearTimeout(initialScroll);
+      window.removeEventListener('popstate', syncToLocation);
+      window.removeEventListener('hashchange', syncToLocation);
+    };
+  }, []);
 
   const handleNavClick = (href: string) => {
+    skipFocusRestore.current = true;
+    getLenis()?.start();
     setIsMenuOpen(false);
-    const el = document.querySelector(href);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+    scrollToSection(href);
   };
 
   return (
@@ -100,6 +210,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
         style={{ transform: isNavHidden && !isMenuOpen ? 'translateY(-100%)' : 'translateY(0)' }}
         role="navigation"
         aria-label="Main navigation"
+        onFocusCapture={() => { if (isNavHidden) setIsNavHidden(false); }}
       >
         <div className="max-w-[1440px] mx-auto px-6 lg:px-12 h-16 flex items-center justify-between border-b border-border">
           <a href="#hero" onClick={(e) => { e.preventDefault(); handleNavClick('#hero'); }} className="group flex items-center py-2" aria-label="Ahmed Atef — home"><Logo /></a>
@@ -111,23 +222,28 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
                 <a
                   href={link.href}
                   onClick={(e) => { e.preventDefault(); handleNavClick(link.href); }}
-                  className="font-mono text-xs text-text-muted hover:text-accent transition-colors tracking-wider"
+                  aria-current={activeSection === link.href ? 'location' : undefined}
+                  className={`font-mono text-xs ${activeSection === link.href ? 'text-accent' : 'text-text-muted hover:text-accent'} transition-colors tracking-wider`}
                 >
                   {link.label}
                 </a>
               </li>
             ))}
             <li className="ml-4 font-mono text-xs text-text-muted">
+              <span className="sr-only">Current time in Cairo: </span>
               {currentTime}
             </li>
           </ul>
 
           {/* Mobile Menu Button */}
           <button
+            ref={menuButtonRef}
             className="lg:hidden flex flex-col gap-1.5 px-3 py-4"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Toggle menu"
+            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={isMenuOpen}
+            aria-controls="mobile-navigation"
+            aria-haspopup="dialog"
           >
             <span className={`block w-6 h-0.5 bg-text transition-all ${isMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
             <span className={`block w-6 h-0.5 bg-text transition-all ${isMenuOpen ? 'opacity-0' : ''}`} />
@@ -139,28 +255,30 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
       {/* Mobile Menu Overlay */}
       <div
         ref={mobileMenuRef}
-        className={`fixed inset-0 z-40 bg-bg pt-20 px-6 lg:hidden ${
-          isMenuOpen ? 'flex flex-col justify-center gap-6' : ''
-        }`}
-        style={{ display: isMenuOpen ? 'flex' : 'none' }}
+        id="mobile-navigation"
+        className="fixed inset-0 z-40 overflow-y-auto bg-bg lg:hidden"
+        style={{ display: isMenuOpen ? 'block' : 'none' }}
         role="dialog"
         aria-modal="true"
         aria-label="Mobile navigation"
       >
-        {navLinks.map((link, index) => (
-          <a
-            key={link.href}
-            href={link.href}
-            onClick={(e) => { e.preventDefault(); handleNavClick(link.href); }}
-            className="font-display text-3xl italic text-text hover:text-accent transition-colors py-1"
-            style={{ animationDelay: `${index * 0.05}s` }}
-          >
-            {link.label}
-          </a>
-        ))}
-        <p className="font-mono text-xs text-text-muted mt-8">
-          {currentTime} • Cairo, Egypt
-        </p>
+        <div className="flex min-h-full flex-col justify-center gap-6 px-6 pb-10 pt-24">
+          {navLinks.map((link, index) => (
+            <a
+              key={link.href}
+              href={link.href}
+              onClick={(e) => { e.preventDefault(); handleNavClick(link.href); }}
+              aria-current={activeSection === link.href ? 'location' : undefined}
+              className={`font-display text-3xl italic ${activeSection === link.href ? 'text-accent' : 'text-text hover:text-accent'} transition-colors py-1`}
+              style={{ animationDelay: `${index * 0.05}s` }}
+            >
+              {link.label}
+            </a>
+          ))}
+          <p className="mt-8 font-mono text-xs text-text-muted">
+            {currentTime} • Cairo, Egypt
+          </p>
+        </div>
       </div>
     </>
   );

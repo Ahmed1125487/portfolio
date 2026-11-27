@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -12,6 +12,7 @@ interface Project {
   gradient: string;
   github?: string;
   progress: number;
+  /** Path relative to public/, e.g. "projects/portfolio.png". */
   image?: string;
   liveUrl?: string;
 }
@@ -47,11 +48,12 @@ const projects: Project[] = [
   {
     index: '(04)',
     title: 'This Portfolio',
-    tech: ['React', 'Three.js', 'GSAP'],
-    description: 'Award-quality portfolio featuring 3D interactions, smooth animations, and editorial design.',
+    tech: ['React', 'TypeScript', 'GSAP', 'Vite'],
+    description: 'Award-quality portfolio featuring a code-glyph canvas, scroll-driven motion, and editorial design.',
     gradient: 'linear-gradient(135deg, #0B0B0C 0%, #1a1a1a 100%)',
     github: 'https://github.com/Ahmed1125487/portfolio',
     progress: 100,
+    image: 'projects/portfolio.png',
   },
 ];
 
@@ -117,13 +119,24 @@ function projectTimeline(card: HTMLElement) {
 export default function Projects() {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+  const [isReduced, setIsReduced] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
 
   useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setIsReduced(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+
+  useEffect(() => {
+    if (isReduced) return;
     const pinTarget = containerRef.current;
     const track = trackRef.current;
     if (!pinTarget || !track) return;
 
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const media = gsap.matchMedia();
 
     media.add('(min-width: 768px)', () => {
@@ -135,11 +148,7 @@ export default function Projects() {
 
         cards.forEach((card) => {
           delete card.dataset.revealed;
-          if (reducedMotion) {
-            card.dataset.revealed = 'true';
-          } else {
-            timelines.set(card, projectTimeline(card));
-          }
+          timelines.set(card, projectTimeline(card));
         });
 
         const reveal = (card: HTMLElement) => {
@@ -159,7 +168,7 @@ export default function Projects() {
         ScrollTrigger.create({
           trigger: pinTarget,
           start: 'top top',
-          end: '+=300%',
+          end: `+=${(projects.length - 1) * 100}%`,
           pin: true,
           scrub: 1,
           snap: {
@@ -175,10 +184,9 @@ export default function Projects() {
           scrollTrigger: {
             trigger: pinTarget,
             start: 'top top',
-            end: '+=300%',
+            end: `+=${(projects.length - 1) * 100}%`,
             scrub: true,
             onUpdate: () => {
-              if (reducedMotion) return;
               if (pinTarget.getBoundingClientRect().top > window.innerHeight * 0.4) return;
               const threshold = window.innerWidth * 0.7;
               cards.forEach((card) => {
@@ -189,7 +197,7 @@ export default function Projects() {
           },
         });
 
-        if (!reducedMotion && cards[0]) {
+        if (cards[0]) {
           ScrollTrigger.create({
             trigger: pinTarget,
             start: 'top 85%',
@@ -215,11 +223,7 @@ export default function Projects() {
 
         cards.forEach((card) => {
           delete card.dataset.revealed;
-          if (reducedMotion) {
-            card.dataset.revealed = 'true';
-          } else {
-            timelines.set(card, projectTimeline(card));
-          }
+          timelines.set(card, projectTimeline(card));
         });
 
         const reveal = (card: HTMLElement) => {
@@ -245,13 +249,11 @@ export default function Projects() {
           });
         });
 
-        if (!reducedMotion) {
-          revealFrame = requestAnimationFrame(() => {
-            cards.forEach((card) => {
-              if (card.getBoundingClientRect().top < window.innerHeight * 0.9) reveal(card);
-            });
+        revealFrame = requestAnimationFrame(() => {
+          cards.forEach((card) => {
+            if (card.getBoundingClientRect().top < window.innerHeight * 0.9) reveal(card);
           });
-        }
+        });
       }, pinTarget);
 
       return () => {
@@ -262,14 +264,15 @@ export default function Projects() {
     });
 
     return () => media.revert();
-  }, []);
+  }, [isReduced]);
 
   return (
     <section
       id="projects"
-      className="relative md:mb-[clamp(-8rem,calc(19rem_-_50vh),0px)]"
+      className={`relative ${isReduced ? '' : 'md:mb-[clamp(-8rem,calc(19rem_-_50vh),0px)]'}`}
       aria-label="Projects section"
     >
+      <h2 className="sr-only">Selected projects</h2>
       <style>{`
         @keyframes proj-plate-drift {
           0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.7; }
@@ -277,6 +280,7 @@ export default function Projects() {
         }
         @media (prefers-reduced-motion: reduce) {
           .proj-plate-drift { animation: none !important; }
+          .proj-preview img { scale: 1 !important; transform: none !important; transition: none !important; }
         }
       `}</style>
 
@@ -285,11 +289,11 @@ export default function Projects() {
         <p className="font-mono text-xs tracking-widest text-accent">(03) — PROJECTS</p>
       </div>
 
-      <div ref={containerRef} className="md:relative md:h-screen">
-        <div className="md:absolute md:inset-x-0 md:top-0 md:h-screen md:overflow-hidden md:bg-bg">
-          <div ref={trackRef} className="flex flex-col md:h-full md:flex-row md:items-center">
+      <div ref={containerRef} className={isReduced ? 'relative' : 'md:relative md:h-screen'}>
+        <div className={isReduced ? '' : 'md:absolute md:inset-x-0 md:top-0 md:h-screen md:overflow-hidden md:bg-bg'}>
+          <div ref={trackRef} className={`flex flex-col ${isReduced ? '' : 'md:h-full md:flex-row md:items-center'}`}>
             {projects.map((project, index) => (
-              <ProjectCard key={index} project={project} index={index} />
+              <ProjectCard key={project.title} project={project} index={index} stacked={isReduced} />
             ))}
           </div>
         </div>
@@ -298,7 +302,7 @@ export default function Projects() {
   );
 }
 
-function ProjectCard({ project, index }: { project: Project; index: number }) {
+function ProjectCard({ project, index, stacked = false }: { project: Project; index: number; stacked?: boolean }) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   // 3D tilt + pointer-tracked glare (fine pointers only).
@@ -347,13 +351,16 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
     };
   }, []);
 
-  const isLive = project.progress >= 100;
-  const status = isLive ? 'LIVE' : 'IN PROGRESS';
+  const isLive = Boolean(project.liveUrl);
+  const status = isLive ? 'LIVE' : project.progress >= 100 ? 'COMPLETE' : 'IN PROGRESS';
   const stackCount = pad(project.tech.length);
   const slug = project.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const imageSrc = project.image
+    ? `${import.meta.env.BASE_URL}${project.image.replace(/^\/+/, '')}`
+    : null;
 
   return (
-    <div className="w-full flex-shrink-0 px-6 py-6 md:w-screen md:h-screen md:py-0 lg:px-12 flex items-center justify-center">
+    <div className={`w-full flex-shrink-0 px-6 py-6 lg:px-12 flex items-center justify-center ${stacked ? '' : 'md:w-screen md:h-screen md:py-0'}`}>
       <div
         ref={cardRef}
         data-progress={project.progress}
@@ -405,7 +412,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
         />
 
         <header className="relative z-[2] flex items-start justify-between gap-4 px-6 pt-5 lg:px-8 lg:pt-7">
-          <span className="proj-index font-display text-4xl italic leading-none text-text/25 transition-colors duration-300 group-hover:text-accent/40 lg:text-5xl">
+          <span className="proj-index font-display text-4xl italic leading-none text-text/45 transition-colors duration-300 group-hover:text-accent/50 lg:text-5xl">
             {project.index}
           </span>
           <span
@@ -418,7 +425,12 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
           >
             <span
               aria-hidden="true"
-              className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent shadow-[0_0_8px_rgba(200,255,61,0.55)]"
+              className={
+                'h-1.5 w-1.5 rounded-full ' +
+                (isLive
+                  ? 'animate-pulse bg-accent shadow-[0_0_8px_rgba(200,255,61,0.55)]'
+                  : 'bg-text-muted')
+              }
             />
             {status}
           </span>
@@ -454,26 +466,13 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
             </div>
           </div>
 
-          {/* Abstract preview plate (desktop) or project image */}
-          <div aria-hidden="true" className="proj-preview relative hidden min-h-0 shrink-0 overflow-hidden border border-border/80 bg-bg/50 lg:flex lg:w-[37%] lg:max-w-[360px] lg:flex-col">
-            {project.image ? (
-              <>
-                <img
-                  src={project.image}
-                  alt=""
-                  width={800}
-                  height={600}
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 h-full w-full object-cover grayscale brightness-[0.65] transition-[filter,transform] duration-700 group-hover:scale-[1.02] group-hover:grayscale-0 group-hover:brightness-100"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/25 to-transparent opacity-80 transition-opacity duration-500 group-hover:opacity-40" />
-                <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between border-b border-border/50 bg-bg/40 px-3 py-2 font-mono text-[8px] tracking-[0.2em] text-text-muted">
-                  <span>PREVIEW // {project.index.replace(/\D/g, '')}</span>
-                  <span className="text-accent">{status}</span>
-                </div>
-              </>
-            ) : (
+          {imageSrc && (
+            <ProjectImagePreview src={imageSrc} title={project.title} index={index} />
+          )}
+
+          {/* Abstract generated preview for projects without a screenshot */}
+          <div aria-hidden="true" className={`proj-preview relative hidden min-h-0 shrink-0 overflow-hidden border border-border/80 bg-bg/50 ${imageSrc ? '' : 'lg:flex lg:w-[37%] lg:max-w-[360px] lg:flex-col'}`}>
+            {!imageSrc && (
               <>
                 <div
                   aria-hidden="true"
@@ -492,7 +491,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
                       <span className="h-1 w-1 bg-text/20" />
                       <span className="h-1 w-1 bg-text/20" />
                     </span>
-                    <span className="truncate px-2 text-text-muted/80">~/build/{slug}</span>
+                    <span className="truncate px-2 text-text-muted">~/build/{slug}</span>
                     <span className="text-accent/80">{project.index}</span>
                   </div>
 
@@ -574,6 +573,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
                 href={project.liveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label={`${project.title} live site (opens in a new tab)`}
                 onClick={(event) => event.stopPropagation()}
                 data-cursor-hover
                 className="whitespace-nowrap font-mono text-[9px] tracking-[0.18em] text-accent underline-offset-4 transition-colors hover:underline focus-visible:outline-offset-4"
@@ -587,7 +587,7 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
                 href={project.github}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${project.title} on GitHub`}
+                aria-label={`${project.title} on GitHub (opens in a new tab)`}
                 data-cursor-hover
                 onClick={(event) => event.stopPropagation()}
                 className="flex h-10 w-10 items-center justify-center text-accent drop-shadow-[0_0_6px_rgba(200,255,61,0.7)] transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
@@ -603,6 +603,47 @@ function ProjectCard({ project, index }: { project: Project; index: number }) {
             )}
           </div>
         </footer>
+      </div>
+    </div>
+  );
+}
+
+function ProjectImagePreview({ src, title, index }: { src: string; title: string; index: number }) {
+  const alt = /portfolio/i.test(title)
+    ? 'Screenshot of the portfolio website homepage'
+    : `Screenshot of the ${title} project`;
+
+  return (
+    <div className="proj-preview order-first flex w-full shrink-0 flex-col overflow-hidden border border-border bg-surface transition-colors duration-300 group-hover:border-accent/40 md:hidden lg:order-last lg:flex lg:w-[37%] lg:max-w-[360px] lg:self-center">
+      <div aria-hidden="true" className="relative flex h-7 shrink-0 items-center border-b border-border bg-bg/70 px-2.5">
+        <span className="flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-text-muted/50" />
+          <span className="h-1.5 w-1.5 rounded-full bg-text-muted/50" />
+          <span className="h-1.5 w-1.5 rounded-full bg-text-muted/50" />
+        </span>
+        <span className="pointer-events-none absolute left-1/2 max-w-[70%] -translate-x-1/2 truncate font-mono text-[10px] leading-none text-text-muted">
+          ahmed1125487.github.io/portfolio
+        </span>
+      </div>
+
+      <div className="relative aspect-[16/10] max-h-[60vh] w-full overflow-hidden bg-bg">
+        <img
+          src={src}
+          alt={alt}
+          width={1896}
+          height={978}
+          loading={index === 0 ? 'eager' : 'lazy'}
+          decoding="async"
+          className="h-full w-full object-cover object-top transition-transform duration-[600ms] ease-out lg:group-hover:scale-[1.03] motion-reduce:transform-none motion-reduce:transition-none"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg/90 via-bg/20 to-transparent opacity-80 transition-opacity duration-300 lg:group-hover:opacity-60"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-2 right-2 h-4 w-4 border-b border-r border-accent/60"
+        />
       </div>
     </div>
   );

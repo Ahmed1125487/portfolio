@@ -19,7 +19,9 @@ export default function CertificateModal({ cert, trigger, onClose }: Certificate
 
   useEffect(() => {
     const lenis = getLenis();
+    const previousOverflow = document.body.style.overflow;
     lenis?.stop();
+    document.body.style.overflow = 'hidden';
 
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const focusTimer = window.setTimeout(() => closeRef.current?.focus(), 40);
@@ -63,6 +65,7 @@ export default function CertificateModal({ cert, trigger, onClose }: Certificate
     return () => {
       window.clearTimeout(focusTimer);
       document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
       lenis?.start();
       const target = trigger ?? previouslyFocused;
       window.requestAnimationFrame(() => target?.focus?.());
@@ -107,8 +110,10 @@ export default function CertificateModal({ cert, trigger, onClose }: Certificate
           <p className="font-mono text-[10px] tracking-[0.22em] text-accent">CREDENTIAL // {cert.index}</p>
           <div className="flex items-center gap-4">
             <span className="hidden items-center gap-2 font-mono text-[9px] tracking-[0.18em] text-accent sm:inline-flex">
-              VERIFIED
-              <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent shadow-[0_0_8px_rgba(200,255,61,0.55)]" />
+              {cert.verifyUrl ? 'VERIFIED' : 'ISSUED'}
+              {cert.verifyUrl && (
+                <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent shadow-[0_0_8px_rgba(200,255,61,0.55)]" />
+              )}
             </span>
             <button
               ref={closeRef}
@@ -135,7 +140,7 @@ export default function CertificateModal({ cert, trigger, onClose }: Certificate
               <CertificateFace cert={cert} variant="modal" />
             </motion.div>
             <div className="mt-3 flex items-center justify-between gap-4 font-mono text-[9px] tracking-[0.2em] text-text-muted">
-              <span>SCAN // AUTHENTIC</span>
+              <span>{cert.verifyUrl ? 'SCAN // AUTHENTIC' : 'SCAN // DOCUMENT'}</span>
               <span>{cert.date}</span>
             </div>
           </div>
@@ -162,7 +167,7 @@ export default function CertificateModal({ cert, trigger, onClose }: Certificate
             </dl>
 
             <div className="mt-5">
-              <p className="font-mono text-[9px] tracking-[0.2em] text-text-muted">SKILLS VERIFIED</p>
+              <p className="font-mono text-[9px] tracking-[0.2em] text-text-muted">SKILLS COVERED</p>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {cert.skills.map((skill) => (
                   <li key={skill} className="border border-border px-3 py-1 font-mono text-xs text-text-muted">

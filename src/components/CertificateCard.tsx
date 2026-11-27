@@ -116,12 +116,14 @@ export default function CertificateCard({ cert, featured = false, isOpen, onOpen
 
         {/* Index + status */}
         <header className="relative z-[2] flex items-start justify-between gap-4">
-          <span className="font-display text-4xl italic leading-none text-text/25 transition-colors duration-300 group-hover:text-accent/40 lg:text-5xl">
+          <span className="font-display text-4xl italic leading-none text-text/45 transition-colors duration-300 group-hover:text-accent/50 lg:text-5xl">
             {cert.index}
           </span>
           <span className="mt-1 inline-flex shrink-0 items-center gap-2 border border-accent/20 bg-accent/[0.04] px-2.5 py-1 font-mono text-[9px] tracking-[0.18em] text-accent">
-            VERIFIED
-            <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent shadow-[0_0_8px_rgba(200,255,61,0.55)]" />
+            {cert.verifyUrl ? 'VERIFIED' : 'ISSUED'}
+            {cert.verifyUrl && (
+              <span aria-hidden="true" className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent shadow-[0_0_8px_rgba(200,255,61,0.55)]" />
+            )}
           </span>
         </header>
 

@@ -1,18 +1,43 @@
+import { useEffect, useRef } from 'react';
 import MagneticButton from '../components/MagneticButton';
 import gsap from 'gsap';
 
 export default function Contact() {
   const email = 'atofy3682@gmail.com';
+  const feedbackRef = useRef<HTMLSpanElement>(null);
+  const feedbackTimer = useRef(0);
+
+  useEffect(() => () => window.clearTimeout(feedbackTimer.current), []);
+
+  const showFeedback = (message: string) => {
+    const feedback = feedbackRef.current;
+    if (!feedback) return;
+    feedback.textContent = message;
+    gsap.killTweensOf(feedback);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      gsap.set(feedback, { opacity: 1, y: 0 });
+    } else {
+      gsap.to(feedback, { opacity: 1, y: 0, duration: 0.3 });
+    }
+    window.clearTimeout(feedbackTimer.current);
+    feedbackTimer.current = window.setTimeout(() => {
+      if (feedbackRef.current) {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          gsap.set(feedbackRef.current, { opacity: 0, y: -10 });
+        } else {
+          gsap.to(feedbackRef.current, { opacity: 0, y: -10, duration: 0.3 });
+        }
+      }
+    }, 2000);
+  };
 
   const copyEmail = async () => {
     try {
       await navigator.clipboard.writeText(email);
-      gsap.to('.copy-feedback', { opacity: 1, y: 0, duration: 0.3 });
-      setTimeout(() => {
-        gsap.to('.copy-feedback', { opacity: 0, y: -10, duration: 0.3 });
-      }, 2000);
+      showFeedback('Copied!');
     } catch (err) {
       console.error('Failed to copy:', err);
+      showFeedback('Copy failed — select the address manually.');
     }
   };
 
@@ -38,10 +63,11 @@ export default function Contact() {
             {/* Email Copy Button */}
             <div className="relative group">
               <button
+                type="button"
                 onClick={copyEmail}
                 className="w-full border border-border p-6 flex items-center justify-between hover:border-accent transition-colors duration-300"
                 data-cursor-hover
-                aria-label="Copy email address to clipboard"
+                aria-label={`Copy email address ${email}`}
               >
                 <span className="font-mono text-sm text-text-muted group-hover:text-accent transition-colors">
                   {email}
@@ -49,10 +75,13 @@ export default function Contact() {
                 <span className="font-mono text-xs text-text-muted group-hover:text-accent transition-colors">
                   COPY
                 </span>
-                <span className="copy-feedback absolute top-full left-0 mt-2 font-mono text-xs text-accent opacity-0 -translate-y-2 transition-all duration-300">
-                  Copied!
-                </span>
               </button>
+              <span
+                ref={feedbackRef}
+                role="status"
+                aria-live="polite"
+                className="copy-feedback pointer-events-none absolute top-full left-0 mt-2 font-mono text-xs text-accent opacity-0 -translate-y-2"
+              />
             </div>
 
             {/* Social Links */}
@@ -61,9 +90,9 @@ export default function Contact() {
                 href="https://github.com/Ahmed1125487"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 border border-border p-4 text-center hover:border-accent hover:text-accent transition-all duration-300 font-mono text-sm"
+                className="flex-1 border border-border p-4 text-center hover:border-accent hover:text-accent transition-colors duration-300 font-mono text-sm"
                 data-cursor-hover
-                aria-label="GitHub profile"
+                aria-label="GitHub profile (opens in a new tab)"
               >
                 GitHub
               </a>
@@ -71,9 +100,9 @@ export default function Contact() {
                 href="https://linkedin.com/in/ahmed-atef-a8461b402"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 border border-border p-4 text-center hover:border-accent hover:text-accent transition-all duration-300 font-mono text-sm"
+                className="flex-1 border border-border p-4 text-center hover:border-accent hover:text-accent transition-colors duration-300 font-mono text-sm"
                 data-cursor-hover
-                aria-label="LinkedIn profile"
+                aria-label="LinkedIn profile (opens in a new tab)"
               >
                 LinkedIn
               </a>

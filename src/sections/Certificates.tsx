@@ -339,7 +339,7 @@ export default function Certificates() {
           </div>
           <div className="lg:col-span-4 lg:pb-4">
             <p className="max-w-sm font-body text-sm leading-relaxed text-text-muted">
-              A verified archive of frontend, backend and computer-science credentials — issued, signed and checkable.
+              A focused archive of frontend, backend and computer-science credentials — issued and documented.
             </p>
           </div>
         </div>
@@ -347,6 +347,7 @@ export default function Certificates() {
         <div className="cert-rule mt-8 h-px w-full origin-left bg-accent/60" />
 
         <div
+          role="group"
           className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] tracking-[0.18em] text-text-muted sm:text-xs"
           aria-label={`${certificateCount} ${certificateNoun}, ${issuerCount} ${issuerNoun}, ${yearLabel}`}
         >

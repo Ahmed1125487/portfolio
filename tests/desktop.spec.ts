@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Desktop Screenshots', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.waitForSelector('[class*="preloader-curtain"]', { state: 'hidden', timeout: 8000 });
+    await page.waitForSelector('.preloader', { state: 'detached', timeout: 8000 });
     await page.waitForTimeout(500);
   });
 
@@ -19,10 +19,11 @@ test.describe('Desktop Screenshots', () => {
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'screenshots/about-desktop.png', fullPage: false });
     await expect(page.locator('#about')).toBeVisible();
+    await expect(page.getByRole('link', { name: '(01) ABOUT' })).toHaveAttribute('aria-current', 'location');
   });
 
   test('skills section with icon marquee', async ({ page }) => {
-    await page.getByRole('link', { name: '(03) SKILLS' }).click();
+    await page.getByRole('link', { name: '(04) SKILLS' }).click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'screenshots/skills-desktop.png', fullPage: false });
     await expect(page.locator('#skills')).toBeVisible();
@@ -30,7 +31,7 @@ test.describe('Desktop Screenshots', () => {
   });
 
   test('contact section', async ({ page }) => {
-    await page.getByRole('link', { name: '(05) CONTACT' }).click();
+    await page.getByRole('link', { name: '(06) CONTACT' }).click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'screenshots/contact-desktop.png', fullPage: false });
     await expect(page.locator('#contact')).toBeVisible();
