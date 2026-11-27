@@ -17,6 +17,7 @@ interface Project {
   liveUrl?: string;
 }
 
+// TODO: add liveUrl: 'https://...' to each deployed project
 const projects: Project[] = [
   {
     index: '(01)',
@@ -53,6 +54,7 @@ const projects: Project[] = [
     gradient: 'linear-gradient(135deg, #0B0B0C 0%, #1a1a1a 100%)',
     github: 'https://github.com/Ahmed1125487/portfolio',
     progress: 100,
+    liveUrl: 'https://portfolio-chi-azure-v78wbk53cw.vercel.app',
     image: 'projects/portfolio.png',
   },
 ];
@@ -574,11 +576,14 @@ function ProjectCard({ project, index, stacked = false }: { project: Project; in
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`${project.title} live site (opens in a new tab)`}
-                onClick={(event) => event.stopPropagation()}
+                title="Live demo"
                 data-cursor-hover
-                className="whitespace-nowrap font-mono text-[9px] tracking-[0.18em] text-accent underline-offset-4 transition-colors hover:underline focus-visible:outline-offset-4"
+                onClick={(event) => event.stopPropagation()}
+                className="flex h-10 w-10 items-center justify-center text-accent drop-shadow-[0_0_6px_rgba(200,255,61,0.7)] transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
               >
-                VIEW LIVE <span aria-hidden="true">↗</span>
+                <svg aria-hidden="true" viewBox="0 0 1155 1000" className="h-5 w-5 overflow-visible fill-current">
+                  <path d="m577.3 0 577.3 1000H0z" />
+                </svg>
               </a>
             )}
 
