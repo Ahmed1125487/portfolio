@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* QA/docs are not application source: do not let their code samples add utilities. */
+@source not "../tests";
 
 @theme {
   --color-bg: #0B0B0C;

@@ -130,13 +130,16 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
 
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
+      const currentIndex = focusables.indexOf(document.activeElement as HTMLElement);
 
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
+      // Handle every Tab inside the dialog. Relying on the browser's default
+      // move after a programmatic wrap can use a stale sequential-focus start
+      // point and let focus escape behind the open menu.
+      event.preventDefault();
+      if (event.shiftKey) {
+        (currentIndex <= 0 ? last : focusables[currentIndex - 1]).focus();
+      } else {
+        (currentIndex === -1 || currentIndex === focusables.length - 1 ? first : focusables[currentIndex + 1]).focus();
       }
     };
 
@@ -203,6 +206,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
 
   return (
     <>
+      <header aria-label="Site header">
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 motion-reduce:transition-none ${
           isScrolled ? 'bg-bg/90 backdrop-blur-sm' : ''
@@ -251,6 +255,7 @@ export default function Navbar({ isMenuOpen, setIsMenuOpen }: NavbarProps) {
           </button>
         </div>
       </nav>
+      </header>
 
       {/* Mobile Menu Overlay */}
       <div

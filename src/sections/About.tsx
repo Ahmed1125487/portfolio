@@ -32,9 +32,11 @@ function Word({ word }: WordProps) {
   }, []);
 
   return (
-    <span ref={wordRef} className="inline-block transition-opacity duration-100 mr-[0.25em]">
-      {word}
-    </span>
+    <>
+      <span ref={wordRef} className="inline-block transition-opacity duration-100">
+        {word}
+      </span>{' '}
+    </>
   );
 }
 

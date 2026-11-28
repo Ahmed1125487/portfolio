@@ -51,7 +51,7 @@ export default function Contact() {
           {/* Main Heading */}
           <div>
             <h2 className="font-display text-[8vw] md:text-[6rem] italic leading-[0.9] text-text mb-8">
-              Let&apos;s work<br /><span className="text-accent">together</span>
+              Let&apos;s work{' '}<br /><span className="text-accent">together</span>
             </h2>
             <p className="font-body text-lg text-text-muted max-w-md">
               Have a project in mind or want to discuss potential collaborations? I&apos;m always open to new opportunities and interesting conversations.

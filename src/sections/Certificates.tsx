@@ -330,7 +330,7 @@ export default function Certificates() {
           <div className="lg:col-span-8">
             <h2 className="font-display text-[clamp(2.6rem,7vw,5.5rem)] leading-[0.95] tracking-tight text-text">
               <span className="block overflow-hidden pb-[0.12em]">
-                <span className="cert-line block">Credentials</span>
+                <span className="cert-line block">Credentials </span>
               </span>
               <span className="block overflow-hidden pb-[0.12em]">
                 <span className="cert-line block">that <em className="italic text-accent">prove</em> it</span>

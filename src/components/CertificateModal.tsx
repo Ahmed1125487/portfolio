@@ -48,15 +48,18 @@ export default function CertificateModal({ cert, trigger, onClose }: Certificate
 
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
-      if (!panel.contains(document.activeElement)) {
+      const currentIndex = focusables.indexOf(document.activeElement as HTMLElement);
+      if (currentIndex === -1) {
         event.preventDefault();
         first.focus();
-      } else if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
+        return;
+      }
+
+      event.preventDefault();
+      if (event.shiftKey) {
+        (currentIndex === 0 ? last : focusables[currentIndex - 1]).focus();
+      } else {
+        (currentIndex === focusables.length - 1 ? first : focusables[currentIndex + 1]).focus();
       }
     };
 

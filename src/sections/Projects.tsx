@@ -284,6 +284,11 @@ export default function Projects() {
           .proj-plate-drift { animation: none !important; }
           .proj-preview img { scale: 1 !important; transform: none !important; transition: none !important; }
         }
+        /* On short desktop viewports the 16:9 card would start behind the
+           sticky section label; clamp it so the label always has clear space. */
+        @media (min-width: 768px) and (min-height: 700px) {
+          .project-card { max-height: calc(100vh - 12rem); }
+        }
       `}</style>
 
       {/* Section Label */}
@@ -291,7 +296,7 @@ export default function Projects() {
         <p className="font-mono text-xs tracking-widest text-accent">(03) — PROJECTS</p>
       </div>
 
-      <div ref={containerRef} className={isReduced ? 'relative' : 'md:relative md:h-screen'}>
+      <div ref={containerRef} className={(isReduced ? 'relative' : 'md:relative md:h-screen') + ' max-md:pt-16'}>
         <div className={isReduced ? '' : 'md:absolute md:inset-x-0 md:top-0 md:h-screen md:overflow-hidden md:bg-bg'}>
           <div ref={trackRef} className={`flex flex-col ${isReduced ? '' : 'md:h-full md:flex-row md:items-center'}`}>
             {projects.map((project, index) => (

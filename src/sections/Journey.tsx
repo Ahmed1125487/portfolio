@@ -213,10 +213,12 @@ export default function Journey() {
     if (!container) return;
 
     let resizeTimer: number | undefined;
+    let lastWidth = container.clientWidth;
 
     const rebuild = () => {
       const width = container.clientWidth;
       if (!width) return;
+      lastWidth = width;
 
       const desktop = window.matchMedia("(min-width: 1024px)").matches;
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -244,8 +246,18 @@ export default function Journey() {
 
     window.addEventListener("resize", handleResize);
 
+    // Rebuild when the container width settles after mount (for example when
+    // scrollbar or font metrics change) even if no window resize event fires.
+    const widthObserver = new ResizeObserver(() => {
+      if (Math.abs(container.clientWidth - lastWidth) <= 1) return;
+      refreshPendingRef.current = true;
+      rebuild();
+    });
+    widthObserver.observe(container);
+
     return () => {
       window.clearTimeout(resizeTimer);
+      widthObserver.disconnect();
       window.removeEventListener("resize", handleResize);
     };
   }, []);
